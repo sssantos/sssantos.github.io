@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Cindy Lai's STA 141B portfolio site">
+
+    <title>Assignment 2 - Cindy Lai's Data Treasure Trove</title>
+
+    <link rel="canonical" href="https://laic5.github.io/2017/01/29/a2/">
+
+    <!-- Bootstrap Core CSS -->
+    <link rel="stylesheet" href="/css/bootstrap.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/css/clean-blog.css">
+
+    <!-- Pygments Github CSS -->
+    <link rel="stylesheet" href="/css/syntax.css">
+
+    <!-- Custom Fonts -->
+    <link href="//maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+    <link href='//fonts.googleapis.com/css?family=Lora:400,700,400italic,700italic' rel='stylesheet' type='text/css'>
+    <link href='//fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800' rel='stylesheet' type='text/css'>
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+    <link type="application/atom+xml" rel="alternate" href="https://laic5.github.io/feed.xml" title="Cindy Lai's Data Treasure Trove" />
+
+</head>
+
+
+<body>
+
+    <!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top">
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="/">Cindy Lai's Data Treasure Trove</a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+            <ul class="nav navbar-nav navbar-right">
+                <li>
+                    <a href="/">Home</a>
+                </li>
+                
+				
+                <li>
+                    <a href="/about/">About</a>
+                </li>
+				
+                
+            </ul>
+        </div>
+        <!-- /.navbar-collapse -->
+    </div>
+    <!-- /.container -->
+</nav>
+
+
+    <!-- Post Header -->
+<header class="intro-header" style="background-image: url('/img/cat.jpg')">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <div class="post-heading">
+                    <h1>Assignment 2</h1>
+                    
+                    <h2 class="subheading">Image manipulation with Python and PIL package</h2>
+                    
+                    <span class="meta">Posted by Cindy Lai on January 29, 2017</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+
+				<h1 id="image-manipulation-with-python-and-pil-package">Image manipulation with Python and PIL package</h1>
+
+<p>Cynthia Lai
+912216296</p>
+
+<p>I asked Colin for questions.
+https://docs.scipy.org/doc/numpy/reference/generated/numpy.fliplr.html
+https://docs.scipy.org/doc/numpy/reference/generated/numpy.matrix.transpose.html
+https://docs.scipy.org/doc/numpy/reference/generated/numpy.dot.html</p>
+
+<h1 id="assignment-2">Assignment 2</h1>
+
+<h2 id="part-1-image-processing-basics">Part 1: Image Processing Basics</h2>
+
+<p>Computers use tiny dots called <em>pixels</em> to display images. Each pixel is stored as an array of numbers that represent color intensities.</p>
+
+<p><strong>Example.</strong> In an 8-bit grayscale image, each pixel is a single number. The number represents light intensity ranging from black (0) to white (255).</p>
+
+<p><strong>Example.</strong> In a 24-bit RGB color image, each pixel is an array of 3 numbers. These numbers range from 0 to 255 and represent red, green, and blue intensity, respectively. For instance, <code class="highlighter-rouge">(0, 0, 255)</code> is <span style="color:#00F">bright blue</span> and <code class="highlighter-rouge">(255, 128, 0)</code> is <span style="color:#FF8000">orange</span>.</p>
+
+<p>In this assignment, you’ll use Python and NumPy to manipulate 24-bit RGB color images.</p>
+
+<p>You can use <code class="highlighter-rouge">Image.open()</code> from the Python imaging library (PIL) to open an image:</p>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="kn">from</span> <span class="nn">PIL</span> <span class="kn">import</span> <span class="n">Image</span>
+
+<span class="c"># Cat image from https://unsplash.com/photos/FqkBXo2Nkq0</span>
+<span class="n">cat_img</span> <span class="o">=</span> <span class="n">Image</span><span class="o">.</span><span class="nb">open</span><span class="p">(</span><span class="s">"cat.png"</span><span class="p">)</span>
+</code></pre>
+</div>
+
+<p>Images display inline in Jupyter notebooks:</p>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">cat_img</span>
+</code></pre>
+</div>
+
+<p><img src="images/output_4_0.png" alt="png" /></p>
+
+<p>In a Python terminal, you can display the image in a new window with <code class="highlighter-rouge">.show()</code> instead.</p>
+
+<p>NumPy can convert images to arrays:</p>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+
+<span class="n">cat</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">cat_img</span><span class="p">)</span>
+</code></pre>
+</div>
+
+<p>To convert an array back to an image (for display) use the function below:</p>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="k">def</span> <span class="nf">as_image</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+    <span class="s">"""Convert an ndarray to an Image.
+    
+    Args:
+        x (ndarray): The array of pixels.
+        
+    Returns:
+        Image: The Image object.
+    """</span>
+    <span class="k">return</span> <span class="n">Image</span><span class="o">.</span><span class="n">fromarray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+</code></pre>
+</div>
+
+<p><strong>Exercise 1.1.</strong> How many dimensions does the <code class="highlighter-rouge">cat</code> array have? What does each dimension represent?</p>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">cat</span><span class="o">.</span><span class="n">shape</span>
+</code></pre>
+</div>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>(267L, 400L, 3L)
+</code></pre>
+</div>
+
+<p>There are 3 dimensions.
+The image is 267 x 400, and has 3 color channels.</p>
+
+<p><strong>Exercise 1.2.</strong> Use <code class="highlighter-rouge">.copy()</code> to copy the cat array to a new variable. Swap the green and blue color channels in the copy. Display the result.</p>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">newCat</span> <span class="o">=</span> <span class="n">cat</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+<span class="n">newCat</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="n">cat</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">2</span><span class="p">]</span>
+<span class="n">newCat</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="n">cat</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">1</span><span class="p">]</span>
+<span class="n">Image</span><span class="o">.</span><span class="n">fromarray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">(</span><span class="n">newCat</span><span class="p">[:,</span> <span class="p">:,</span> <span class="p">:]))</span>
+</code></pre>
+</div>
+
+<p><img src="output_13_0.png" alt="png" /></p>
+
+<p><strong>Exercise 1.3.</strong> Why is <code class="highlighter-rouge">.copy()</code> necessary in exercise 1.2? What happens if you don’t use <code class="highlighter-rouge">.copy()</code>?</p>
+
+<p>If you don’t use copy(), when you change newCat, it will change cat as well.</p>
+
+<p><strong>Exercise 1.4.</strong> Flip the blue color channel from left to right. Display the resulting image. <em>Hint: see the NumPy documentation on array manipulation routines.</em></p>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">cat3</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">fliplr</span><span class="p">(</span><span class="n">cat</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">2</span><span class="p">])</span>
+<span class="n">Image</span><span class="o">.</span><span class="n">fromarray</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">(</span><span class="n">cat3</span><span class="p">))</span>
+</code></pre>
+</div>
+
+<p><img src="output_17_0.png" alt="png" /></p>
+
+<h2 id="part-2-singular-value-decomposition">Part 2: Singular Value Decomposition</h2>
+
+<p>Suppose $X$ is an $n \times p$ matrix (for instance, one color channel of the cat image). The <em>singular value decomposition</em> (SVD) factors $X$ as $X = UD V^T$, where:</p>
+
+<ul>
+  <li>$U$ is an $n \times n$ orthogonal matrix</li>
+  <li>$D$ is an $n \times p$ matrix with zeroes everywhere except the diagonal</li>
+  <li>$V$ is an $p \times p$ orthogonal matrix</li>
+</ul>
+
+<p>Note that a matrix $A$ is <em>orthogonal</em> when $A^T A = I$ and $AA^T = I$.</p>
+
+<p><strong>Example.</strong> We can use NumPy to compute the SVD for a matrix:</p>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span>
+    <span class="p">[[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span>
+     <span class="p">[</span><span class="mi">3</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">]]</span>
+<span class="p">)</span>
+<span class="n">u</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">vt</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">svd</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+<span class="c"># Here d is 2x2 because NumPy only returns the diagonal of D.</span>
+<span class="k">print</span> <span class="s">"u is:</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="s">"</span><span class="se">\n</span><span class="s">d is:</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="s">"</span><span class="se">\n</span><span class="s">v^T is:</span><span class="se">\n</span><span class="s">"</span><span class="p">,</span> <span class="n">vt</span>
+</code></pre>
+</div>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>u is:
+[[-0.68145174 -0.73186305]
+ [-0.73186305  0.68145174]] 
+d is:
+[ 4.52966162  2.54600974] 
+v^T is:
+[[-0.48471372 -0.62402665 -0.6128975 ]
+ [ 0.80296442 -0.03960025 -0.59470998]
+ [ 0.34684399 -0.78039897  0.52026598]]
+</code></pre>
+</div>
+
+<p>If we let</p>
+
+<ul>
+  <li>$u_i$ denote the $i$th column of $U$</li>
+  <li>$d_i$ denote the $i$th diagonal element of $D$</li>
+  <li>$v_i$ denote the $i$th column of $V$</li>
+</ul>
+
+<p>then we can write the SVD as $\ X = UDV^T = d_1 u_1 v_1^T + \ldots + d_m u_m v_m^T\ $ using the rules of matrix multiplication. In other words, the SVD decomposes $X$ into a sum!</p>
+
+<p>If we eliminate some of the terms in the sum, we get a simple approximation for $X$. For instance, we could eliminate all but first 3 terms to get the approximation $X \approx d_1 u_1 v_1^T + d_2 u_2 v_2^T + d_3 u_3 v_3^T$. This is the same as if we:</p>
+
+<ul>
+  <li>Zero all but the first 3 diagonal elements of $D$ to get $D_3$, then compute $X \approx UD_3V^T$</li>
+  <li>Eliminate all but the first 3 columns of $V$ to get $p \times 3$ matrix $V_3$, then compute $X \approx UDV_3^T$</li>
+</ul>
+
+<p>We always eliminate terms starting from the end rather than the beginning, because these terms contribute the least to $X$.</p>
+
+<p>Why would we want to approximate a matrix $X$?</p>
+
+<p>In statistics, <em>principal components analysis</em> uses this approximation to reduce the dimension (number of covariates) in a  centered (mean 0) data set. The vectors $d_i u_i$ are called the <em>principal components</em> of $X$. The vectors $v_i^T$ are called the <em>basis vectors</em>. Note that both depend on $X$. The dimension is reduced by using the first $q$ principal components instead of the original $p$ covariates. In other words, the $n \times p$ data $X$ is replaced by the $n \times q$ data $UD_q = XV_q$</p>
+
+<p>In computing, this approximation is sometimes used to reduce the number of bits needed to store a matrix (or image). If $q$ terms are kept, then only $nq + pq$ values (for $XV_q$ and $V_q^T$) need to be stored instead of the uncompressed $np$ values.</p>
+
+<p><strong>Exercise 2.1.</strong> Write the functions described below.</p>
+
+<ul>
+  <li>
+    <p>A function that takes a matrix $X$ and returns its principal component matrix $XV_q$ and basis matrix $V_q^T$. This function should also take the number of terms kept $q$ as an argument.</p>
+  </li>
+  <li>
+    <p>A function that takes a principal component matrix $XV_q$ and basis matrix $V_q^T$ and returns an approximation $\hat{X}$ for the original matrix.</p>
+  </li>
+</ul>
+
+<p>As usual, make sure to document your functions. Test your function on the red color channel of the cat image. What’s the smallest number of terms where the cat is still recognizable as a cat?</p>
+
+<p>The function <b>pcAndBasis</b> takes a matrix x and threshold value q and returns the principal component matrix and a basis matrix.</p>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="k">def</span> <span class="nf">pcAndBasis</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">q</span><span class="p">):</span>
+    <span class="c"># returns a matrix XV (pcMatrix) and basis Vt (basis)</span>
+    <span class="c"># x is the input matrix, q is the number of terms kept</span>
+    <span class="n">u</span><span class="p">,</span> <span class="n">d</span><span class="p">,</span> <span class="n">vt</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">svd</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="n">basis</span> <span class="o">=</span> <span class="p">(</span><span class="n">vt</span><span class="o">.</span><span class="n">transpose</span><span class="p">()[:,</span> <span class="p">:</span><span class="n">q</span><span class="p">])</span><span class="o">.</span><span class="n">transpose</span><span class="p">()</span> <span class="c"># q x p matrix</span>
+    <span class="n">pcMatrix</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">vt</span><span class="o">.</span><span class="n">transpose</span><span class="p">()[:,</span> <span class="p">:</span><span class="n">q</span><span class="p">])</span> <span class="c"># n x p * p x q = n x q</span>
+    <span class="k">return</span> <span class="n">pcMatrix</span><span class="p">,</span> <span class="n">basis</span>
+
+<span class="n">pc</span><span class="p">,</span> <span class="n">basis</span> <span class="o">=</span> <span class="n">pcAndBasis</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="n">pcAndBasis</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+</code></pre>
+</div>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>(array([[-3.0867458 ],
+        [-3.31509197]]), array([[-0.48471372, -0.62402665, -0.6128975 ]]))
+</code></pre>
+</div>
+
+<p>The <b>approximate</b> function takes a PC matrix and a basis matrix and returns the X matrix approximated, set by a q threshold level.</p>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="k">def</span> <span class="nf">approximate</span><span class="p">(</span><span class="n">pcMatrix</span><span class="p">,</span> <span class="n">basis</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">pcMatrix</span><span class="p">,</span> <span class="n">basis</span><span class="p">)</span>
+<span class="c">#approximate(pc, basis)</span>
+</code></pre>
+</div>
+
+<p>Now, we use a copy of the cat image to modify the red channel level.</p>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">blurryCat</span> <span class="o">=</span> <span class="n">cat</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+<span class="n">q</span> <span class="o">=</span> <span class="mi">15</span>
+<span class="n">pcRed</span><span class="p">,</span> <span class="n">basisRed</span> <span class="o">=</span> <span class="n">pcAndBasis</span><span class="p">(</span><span class="n">cat</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">q</span><span class="p">)</span>
+<span class="n">blurryRed</span> <span class="o">=</span> <span class="n">approximate</span><span class="p">(</span><span class="n">pcRed</span><span class="p">,</span> <span class="n">basisRed</span><span class="p">)</span>
+<span class="n">blurryCat</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">blurryRed</span>
+<span class="c">#print pcRed.shape, basisRed.shape, blurryRed.shape</span>
+<span class="n">as_image</span><span class="p">(</span><span class="n">blurryCat</span><span class="p">[:,:,</span><span class="mi">0</span><span class="p">])</span>
+</code></pre>
+</div>
+
+<p><img src="output_26_0.png" alt="png" /></p>
+
+<p>At q = 15, the image still looks vaguely like a cat. It is a bit hard to comprehend, but there are a few traits that still stand out as that of a cat.</p>
+
+<p><strong>Exercise 2.2.</strong> You can check the number of bytes used by a NumPy array with the <code class="highlighter-rouge">.nbytes</code> attribute. How many bytes does the red color channel of the cat image use? How many bytes does the compressed version use when 10 terms are kept? What percentage of the original size is this?</p>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">pc10</span><span class="p">,</span> <span class="n">basis10</span> <span class="o">=</span> <span class="n">pcAndBasis</span><span class="p">(</span><span class="n">cat</span><span class="p">[:,:,</span><span class="mi">0</span><span class="p">],</span> <span class="mi">10</span><span class="p">)</span>
+<span class="n">cat10</span> <span class="o">=</span> <span class="n">cat</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+<span class="n">cat10</span><span class="p">[:,</span> <span class="p">:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">approximate</span><span class="p">(</span><span class="n">pc10</span><span class="p">,</span> <span class="n">basis10</span><span class="p">)</span>
+
+<span class="n">originalPC</span><span class="p">,</span> <span class="n">originalBasis</span> <span class="o">=</span> <span class="n">pcAndBasis</span><span class="p">(</span><span class="n">cat</span><span class="p">[:,:,</span><span class="mi">0</span><span class="p">],</span> <span class="mi">400</span><span class="p">)</span>
+
+<span class="k">print</span> <span class="s">"original image bytes: </span><span class="si">%</span><span class="s">d"</span> <span class="o">%</span><span class="p">(</span><span class="n">cat</span><span class="p">[:,:,</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">nbytes</span><span class="p">)</span>
+<span class="k">print</span> <span class="s">"blurry rate bytes: </span><span class="si">%</span><span class="s">d"</span> <span class="o">%</span><span class="p">(</span><span class="n">pc10</span><span class="o">.</span><span class="n">nbytes</span> <span class="o">+</span> <span class="n">basis10</span><span class="o">.</span><span class="n">nbytes</span><span class="p">)</span>
+
+<span class="k">print</span> <span class="s">"Percentage of compression: </span><span class="si">%</span><span class="s">d</span><span class="si">%%</span><span class="s">"</span> <span class="o">%</span><span class="p">((</span><span class="n">pc10</span><span class="o">.</span><span class="n">nbytes</span> <span class="o">+</span> <span class="n">basis10</span><span class="o">.</span><span class="n">nbytes</span><span class="p">)</span><span class="o">*</span><span class="mi">100</span><span class="o">/</span><span class="n">cat</span><span class="p">[:,:,</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">nbytes</span><span class="p">)</span>
+</code></pre>
+</div>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>original image bytes: 106800
+blurry rate bytes: 53360
+Percentage of compression: 49%
+</code></pre>
+</div>
+
+
+
+                <hr>
+
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/2017/01/22/a1/" data-toggle="tooltip" data-placement="top" title="Assignment 1">&larr; Previous Post</a>
+                    </li>
+                    
+                    
+                    <li class="next">
+                        <a href="/2017/02/05/a3/" data-toggle="tooltip" data-placement="top" title="Assignment 3">Next Post &rarr;</a>
+                    </li>
+                    
+                </ul>
+
+            </div>
+        </div>
+    </div>
+</article>
+
+<hr>
+
+
+    <!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <ul class="list-inline text-center">
+                    <li>
+                        <a href="/feed.xml">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-rss fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                    
+                    
+                    
+                    <li>
+                        <a href="https://github.com/laic5">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-github fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                    
+                    
+                    <li>
+                        <a href="mailto:CynthiaLai1996@gmail.com">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-envelope fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                    
+                </ul>
+                <p class="copyright text-muted">Copyright &copy;  2017</p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+<script src="/js/jquery.min.js "></script>
+
+<!-- Bootstrap Core JavaScript -->
+<script src="/js/bootstrap.min.js "></script>
+
+<!-- Custom Theme JavaScript -->
+<script src="/js/clean-blog.min.js "></script>
+
+
+    
+
+
+</body>
+
+</html>

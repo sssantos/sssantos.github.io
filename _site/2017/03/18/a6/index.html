@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Cindy Lai's STA 141B portfolio site">
+
+    <title>Assignment 6 - Cindy Lai's Data Treasure Trove</title>
+
+    <link rel="canonical" href="http://localhost:4000/2017/03/18/a6/">
+
+    <!-- Bootstrap Core CSS -->
+    <link rel="stylesheet" href="/css/bootstrap.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/css/clean-blog.css">
+
+    <!-- Pygments Github CSS -->
+    <link rel="stylesheet" href="/css/syntax.css">
+
+    <!-- Custom Fonts -->
+    <link href="//maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+    <link href='//fonts.googleapis.com/css?family=Lora:400,700,400italic,700italic' rel='stylesheet' type='text/css'>
+    <link href='//fonts.googleapis.com/css?family=Open+Sans:300italic,400italic,600italic,700italic,800italic,400,300,600,700,800' rel='stylesheet' type='text/css'>
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+    <link type="application/atom+xml" rel="alternate" href="http://localhost:4000/feed.xml" title="Cindy Lai's Data Treasure Trove" />
+
+</head>
+
+
+<body>
+
+    <!-- Navigation -->
+<nav class="navbar navbar-default navbar-custom navbar-fixed-top">
+    <div class="container-fluid">
+        <!-- Brand and toggle get grouped for better mobile display -->
+        <div class="navbar-header page-scroll">
+            <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="/">Cindy Lai's Data Treasure Trove</a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+            <ul class="nav navbar-nav navbar-right">
+                <li>
+                    <a href="/">Home</a>
+                </li>
+                
+				
+                <li>
+                    <a href="/about/">About</a>
+                </li>
+				
+                
+            </ul>
+        </div>
+        <!-- /.navbar-collapse -->
+    </div>
+    <!-- /.container -->
+</nav>
+
+
+    <!-- Post Header -->
+<header class="intro-header" style="background-image: url('/img/sf.jpg')">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <div class="post-heading">
+                    <h1>Assignment 6</h1>
+                    
+                    <h2 class="subheading">Introduction to SQL</h2>
+                    
+                    <span class="meta">Posted by Cindy Lai on March 18, 2017</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</header>
+
+<!-- Post Content -->
+<article>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+
+				<h1 id="assignment-6">Assignment 6</h1>
+
+<p>In this assignment, you’ll analyze a collection of data sets from the <a href="http://data.sfgov.org/">San Francisco Open Data Portal</a> and <a href="https://www.zillow.com/">Zillow</a>. The data sets have been stored in the SQLite database <code class="highlighter-rouge">sf_data.sqlite</code>, which you can <a href="http://anson.ucdavis.edu/~nulle/sf_data.sqlite">download here</a>. The database contains the following tables:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Table</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code class="highlighter-rouge">crime</code></td>
+      <td>Crime reports dating back to 2010.</td>
+    </tr>
+    <tr>
+      <td><code class="highlighter-rouge">mobile_food_locations</code></td>
+      <td>List of all locations where mobile food vendors sell.</td>
+    </tr>
+    <tr>
+      <td><code class="highlighter-rouge">mobile_food_permits</code></td>
+      <td>List of all mobile food vendor permits. More details <a href="https://data.sfgov.org/api/views/rqzj-sfat/files/8g2f5RV4PEk0_b24iJEtgEet9gnh_eA27GlqoOjjK4k?download=true&amp;filename=DPW_DataDictionary_Mobile-Food-Facility-Permit.pdf">here</a>.</td>
+    </tr>
+    <tr>
+      <td><code class="highlighter-rouge">mobile_food_schedule</code></td>
+      <td>Schedules for mobile food vendors.</td>
+    </tr>
+    <tr>
+      <td><code class="highlighter-rouge">noise</code></td>
+      <td>Noise complaints dating back to August 2015.</td>
+    </tr>
+    <tr>
+      <td><code class="highlighter-rouge">parking</code></td>
+      <td>List of all parking lots.</td>
+    </tr>
+    <tr>
+      <td><code class="highlighter-rouge">parks</code></td>
+      <td>List of all parks.</td>
+    </tr>
+    <tr>
+      <td><code class="highlighter-rouge">schools</code></td>
+      <td>List of all schools.</td>
+    </tr>
+    <tr>
+      <td><code class="highlighter-rouge">zillow</code></td>
+      <td>Zillow rent and housing statistics dating back to 1996. More details <a href="https://www.zillow.com/research/data/">here</a>.</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>The <code class="highlighter-rouge">mobile_food_</code> tables are explicitly connected through the <code class="highlighter-rouge">locationid</code> and <code class="highlighter-rouge">permit</code> columns. The other tables are not connected, but you may be able to connect them using dates, latitude/longitude, or postal codes.</p>
+
+<p>Shapefiles for US postal codes are available <a href="https://www.census.gov/geo/maps-data/data/cbf/cbf_zcta.html">here</a>. These may be useful for converting latitude/longitude to postal codes.</p>
+
+<p>Shapefiles for San Francisco Neighborhoods are available <a href="https://data.sfgov.org/Geographic-Locations-and-Boundaries/SF-Find-Neighborhoods/pty2-tcw4">here</a>.</p>
+
+<p><strong>Exercise 1.1.</strong> Which mobile food vendor(s) sells at the most locations?</p>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="kn">from</span> <span class="nn">sqlalchemy</span> <span class="kn">import</span> <span class="n">create_engine</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="kn">as</span> <span class="nn">pd</span>
+
+<span class="n">sf_conn</span> <span class="o">=</span> <span class="n">create_engine</span><span class="p">(</span><span class="s">'sqlite:///sf_data.sqlite'</span><span class="p">)</span>
+
+<span class="n">sql_query</span> <span class="o">=</span> <span class="s">"""
+select Applicant, count(distinct locationid) from mobile_food_permits
+JOIN mobile_food_schedule ON mobile_food_schedule.permit = mobile_food_permits.permit
+group by Applicant
+order by count(distinct locationid) desc
+"""</span>
+
+<span class="n">pd</span><span class="o">.</span><span class="n">read_sql_query</span><span class="p">(</span><span class="n">sql_query</span><span class="p">,</span> <span class="n">sf_conn</span><span class="p">)</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
+</code></pre>
+</div>
+
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Applicant</th>
+      <th>count(distinct locationid)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>May Catering</td>
+      <td>58</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>Anas Goodies Catering</td>
+      <td>37</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>Natan's Catering</td>
+      <td>37</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>Liang Bai Ping</td>
+      <td>33</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>Park's Catering</td>
+      <td>23</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<p>From the SQL query, we can see that May Catering sells at the most locations (58 distinct locations).<br />
+Anas Goodies Catering and Natan’s Catering follow after.
+___</p>
+
+<p><strong>Exercise 1.2.</strong> Ask and use the database to analyze 5 questions about San Francisco. For each question, write at least 150 words and support your answer with plots. Make a map for at least 2 of the 5 questions.</p>
+
+<p>You should try to come up with some questions on your own, but these are examples of reasonable questions:</p>
+
+<ul>
+  <li>Which parts of the city are the most and least expensive?</li>
+  <li>Which parts of the city are the most dangerous (and at what times)?</li>
+  <li>Are noise complaints and mobile food vendors related?</li>
+  <li>What are the best times and places to find food trucks?</li>
+  <li>Is there a relationship between housing prices and any of the other tables?</li>
+</ul>
+
+<p>Please make sure to clearly state each of your questions in your submission.</p>
+
+<h4 id="which-parts-of-the-city-are-the-most-and-least-expensive">Which parts of the city are the most and least expensive?</h4>
+<hr />
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">geopandas</span> <span class="kn">as</span> <span class="nn">gpd</span>
+<span class="c">#from mpl_toolkits.basemap import Basemap</span>
+
+
+<span class="n">shp_fn</span> <span class="o">=</span> <span class="s">'cb_2015_us_zcta510_500k.shp'</span>  <span class="c">#shapefile</span>
+<span class="n">cities</span> <span class="o">=</span> <span class="n">gpd</span><span class="o">.</span><span class="n">read_file</span><span class="p">(</span><span class="n">shp_fn</span><span class="p">)</span>
+</code></pre>
+</div>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">zips</span> <span class="o">=</span> <span class="n">cities</span><span class="p">[</span><span class="n">cities</span><span class="o">.</span><span class="n">ZCTA5CE10</span><span class="o">.</span><span class="nb">str</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s">"9"</span><span class="p">)]</span>
+<span class="n">zips</span> <span class="o">=</span> <span class="n">zips</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">to_numeric</span><span class="p">(</span><span class="n">zips</span><span class="o">.</span><span class="n">ZCTA5CE10</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">96199</span><span class="p">]</span>
+</code></pre>
+</div>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="c"># get the prices from the different regions in the zillow db</span>
+<span class="n">region_median_price</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_sql_query</span><span class="p">(</span><span class="s">"select RegionName, avg(zillow.MedianSoldPricePerSqft_AllHomes) median_sqft from zillow group by RegionName"</span><span class="p">,</span> <span class="n">sf_conn</span><span class="p">)</span>
+<span class="n">region_median_price</span><span class="o">.</span><span class="n">tail</span><span class="p">()</span>
+</code></pre>
+</div>
+
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>RegionName</th>
+      <th>median_sqft</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>21</th>
+      <td>94131</td>
+      <td>560.122866</td>
+    </tr>
+    <tr>
+      <th>22</th>
+      <td>94132</td>
+      <td>385.384982</td>
+    </tr>
+    <tr>
+      <th>23</th>
+      <td>94133</td>
+      <td>638.636839</td>
+    </tr>
+    <tr>
+      <th>24</th>
+      <td>94134</td>
+      <td>347.027455</td>
+    </tr>
+    <tr>
+      <th>25</th>
+      <td>94158</td>
+      <td>657.211820</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">new_zips</span> <span class="o">=</span> <span class="n">zips</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+
+<span class="c"># join the shapefile columns with the zillow df to associate price with the map region</span>
+<span class="n">new_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">new_zips</span><span class="p">,</span> <span class="n">region_median_price</span><span class="p">,</span> <span class="n">how</span> <span class="o">=</span> <span class="s">'right'</span><span class="p">,</span> <span class="n">left_on</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_numeric</span><span class="p">(</span><span class="n">zips</span><span class="o">.</span><span class="n">ZCTA5CE10</span><span class="p">),</span> <span class="n">right_on</span> <span class="o">=</span> <span class="s">'RegionName'</span><span class="p">)</span>
+<span class="n">new_df</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
+</code></pre>
+</div>
+
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>index</th>
+      <th>AFFGEOID10</th>
+      <th>ALAND10</th>
+      <th>AWATER10</th>
+      <th>GEOID10</th>
+      <th>ZCTA5CE10</th>
+      <th>geometry</th>
+      <th>RegionName</th>
+      <th>median_sqft</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>997</td>
+      <td>8600000US94108</td>
+      <td>698155</td>
+      <td>0</td>
+      <td>94108</td>
+      <td>94108</td>
+      <td>POLYGON ((-122.414826 37.794988, -122.404412 3...</td>
+      <td>94108</td>
+      <td>501.013201</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>5104</td>
+      <td>8600000US94104</td>
+      <td>200857</td>
+      <td>0</td>
+      <td>94104</td>
+      <td>94104</td>
+      <td>POLYGON ((-122.404613 37.793565, -122.401315 3...</td>
+      <td>94104</td>
+      <td>1336.128581</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>5154</td>
+      <td>8600000US94122</td>
+      <td>6124846</td>
+      <td>0</td>
+      <td>94122</td>
+      <td>94122</td>
+      <td>POLYGON ((-122.50987 37.76409, -122.508335 37....</td>
+      <td>94122</td>
+      <td>453.210167</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>5156</td>
+      <td>8600000US94158</td>
+      <td>1703879</td>
+      <td>1342698</td>
+      <td>94158</td>
+      <td>94158</td>
+      <td>POLYGON ((-122.397866 37.772323, -122.396381 3...</td>
+      <td>94158</td>
+      <td>657.211820</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>6078</td>
+      <td>8600000US94110</td>
+      <td>6019920</td>
+      <td>12207</td>
+      <td>94110</td>
+      <td>94110</td>
+      <td>POLYGON ((-122.426722 37.736372, -122.425082 3...</td>
+      <td>94110</td>
+      <td>543.998864</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="o">%</span><span class="n">matplotlib</span> <span class="n">inline</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="kn">as</span> <span class="nn">plt</span>
+
+<span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span><span class="mi">6</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s">"Median Price per Sq. Ft in San Francisco"</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s">"Latitude"</span><span class="p">)</span>
+<span class="n">fig</span><span class="o">.</span><span class="n">autofmt_xdate</span><span class="p">()</span>
+
+<span class="n">new_df</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">ax</span> <span class="o">=</span> <span class="n">ax</span><span class="p">,</span> <span class="n">column</span><span class="o">=</span><span class="s">'median_sqft'</span><span class="p">,</span> <span class="n">scheme</span><span class="o">=</span><span class="s">'QUANTILES'</span><span class="p">,</span> <span class="n">legend</span> <span class="o">=</span> <span class="bp">True</span><span class="p">)</span>
+</code></pre>
+</div>
+
+<p><img src="output_10_1.png" alt="png" /></p>
+
+<p><em>Ignore the purple piece behind the legend.</em><br />
+According to the color-coded map, the areas in <strong>brown and yellow</strong> are the most expensive areas of SF. The <strong>dark purple</strong> are the least expensive areas. <br />We can see that the majority of purple areas are on the bottom part of SF, while the expensive areas are concentrated in the top right. 
+Some of the expensive neighborhoods could be Mission Bay, Presidio/Presidio Heights, and North Beach.</p>
+
+<p><br /></p>
+<h4 id="which-parts-of-the-city-are-the-most-dangerous-and-at-what-times">Which parts of the city are the most dangerous (and at what times)?</h4>
+<hr />
+
+<p>Since it is hard to come up with a methodical method to objectively quantify how severe the crimes are, I will treat all crimes equally and rate by crime quantity only. 
+<br />I did exclude non-criminal incidences, but that did not change the ordering.</p>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="c"># get the districts sorted by the number of crime incidences over all time</span>
+<span class="n">pd</span><span class="o">.</span><span class="n">read_sql_query</span><span class="p">(</span><span class="s">"select crime.PdDistrict, count(crime.IncidntNum) from crime where crime.Category != 'NON-CRIMINAL' group by crime.PdDistrict order by count(crime.IncidntNum) desc"</span><span class="p">,</span> <span class="n">sf_conn</span><span class="p">)</span>
+</code></pre>
+</div>
+
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>PdDistrict</th>
+      <th>IncidntNum)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>SOUTHERN</td>
+      <td>170602</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>MISSION</td>
+      <td>119729</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>NORTHERN</td>
+      <td>110707</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>CENTRAL</td>
+      <td>94437</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>BAYVIEW</td>
+      <td>93121</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>INGLESIDE</td>
+      <td>80217</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>TENDERLOIN</td>
+      <td>73430</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>TARAVAL</td>
+      <td>65774</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>PARK</td>
+      <td>51486</td>
+    </tr>
+    <tr>
+      <th>9</th>
+      <td>RICHMOND</td>
+      <td>48195</td>
+    </tr>
+    <tr>
+      <th>10</th>
+      <td>None</td>
+      <td>1</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="c"># looking at recent years, 2015 onwards</span>
+<span class="n">query</span> <span class="o">=</span> <span class="s">"""
+select crime.PdDistrict, count(crime.IncidntNum) as '# of Crime Incidences 2015-2016' from crime 
+where crime.Category != 'NON-CRIMINAL' and crime.Datetime &gt; '2015-01-01'
+group by crime.PdDistrict
+order by count(crime.IncidntNum) desc
+"""</span>
+<span class="n">pd</span><span class="o">.</span><span class="n">read_sql_query</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">sf_conn</span><span class="p">)</span>
+</code></pre>
+</div>
+
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>PdDistrict</th>
+      <th># of Crime Incidences 2015-2016</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>SOUTHERN</td>
+      <td>54189</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>NORTHERN</td>
+      <td>38172</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>MISSION</td>
+      <td>35586</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>CENTRAL</td>
+      <td>33146</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>BAYVIEW</td>
+      <td>27623</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>INGLESIDE</td>
+      <td>23434</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>TARAVAL</td>
+      <td>21279</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>TENDERLOIN</td>
+      <td>18698</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>PARK</td>
+      <td>16253</td>
+    </tr>
+    <tr>
+      <th>9</th>
+      <td>RICHMOND</td>
+      <td>16194</td>
+    </tr>
+    <tr>
+      <th>10</th>
+      <td>None</td>
+      <td>1</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="c"># see what types of crimes are most common in the top-crime regions</span>
+<span class="n">crime_type_counts</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_sql_query</span><span class="p">(</span><span class="s">"""select PdDistrict, Category, count(Category) from crime 
+where crime.PdDistrict in ('SOUTHERN', 'NORTHERN', 'MISSION') and Datetime &gt; '2015-01-01'
+group by PdDistrict, crime.Category
+order by count(crime.Category) desc"""</span><span class="p">,</span> <span class="n">sf_conn</span><span class="p">)</span>
+<span class="n">crime_type_counts</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+</code></pre>
+</div>
+
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>PdDistrict</th>
+      <th>Category</th>
+      <th>count(Category)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>SOUTHERN</td>
+      <td>LARCENY/THEFT</td>
+      <td>21122</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>NORTHERN</td>
+      <td>LARCENY/THEFT</td>
+      <td>15697</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>SOUTHERN</td>
+      <td>NON-CRIMINAL</td>
+      <td>7239</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<p>To see the differences across the 3 regions (Southern, Northern, and Mission), I created a barplot divided by the most common crimes, where each region is a separate color.</p>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">seaborn</span> <span class="kn">as</span> <span class="nn">sns</span>
+
+<span class="n">g</span> <span class="o">=</span> <span class="n">sns</span><span class="o">.</span><span class="n">factorplot</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="s">"Category"</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="s">"count(Category)"</span><span class="p">,</span> <span class="n">hue</span><span class="o">=</span><span class="s">"PdDistrict"</span><span class="p">,</span> <span class="n">data</span><span class="o">=</span><span class="n">crime_type_counts</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">21</span><span class="p">),</span>
+                   <span class="n">size</span><span class="o">=</span><span class="mi">6</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s">"bar"</span><span class="p">,</span> <span class="n">palette</span><span class="o">=</span><span class="s">"muted"</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">xticks</span><span class="p">(</span><span class="n">rotation</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s">"Crime Category"</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s">"Crime Distribution Across Southern, Northern, Mission 2015-2016"</span><span class="p">)</span>
+
+<span class="n">g</span><span class="o">.</span><span class="n">despine</span><span class="p">(</span><span class="n">left</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+<span class="n">g</span><span class="o">.</span><span class="n">set_ylabels</span><span class="p">(</span><span class="s">"Count"</span><span class="p">)</span>
+</code></pre>
+</div>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>&lt;seaborn.axisgrid.FacetGrid at 0x15e59ac8&gt;
+</code></pre>
+</div>
+
+<p><img src="output_18_1.png" alt="png" /></p>
+
+<p>From the tables above, we can see which districts are the most dangerous (highest number of crime incidents).<br />
+From our findings, Southern is significantly more dangerous (by number of incidences), followed by Mission and Northern.<br />
+Interestingly, when you look at crimes from 2015 onwards, Northern has a higher number of incidences than Mission. Mission overall, had <em>8%</em> more crimes than Northern, but in recent years, Northern has <em>7%</em> more than Mission.<br />This could indicate that one neighborhood (Northern) got more dangerous recently and/or Mission got more safe.
+The most common crime is theft. Glancing at the graph, Mission crime types seem more serious (i.e. vehicle theft) compared to Northern. Northern only comes higher overall because of the number of thefts. However over most of the other categories, Mission has higher counts.</p>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="c"># don't look at non-criminal</span>
+<span class="n">datetimes</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_sql_query</span><span class="p">(</span><span class="s">"select crime.Datetime from crime where crime.Category != 'NON-CRIMINAL'"</span><span class="p">,</span> <span class="n">sf_conn</span><span class="p">)</span>
+<span class="c">#datetimes.head()</span>
+<span class="n">datetimes</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">datetimes</span><span class="p">[</span><span class="s">"Datetime"</span><span class="p">])</span>
+</code></pre>
+</div>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="c"># extract out the times crimes usually occur at</span>
+
+<span class="kn">from</span> <span class="nn">datetime</span> <span class="kn">import</span> <span class="n">datetime</span>
+
+<span class="n">times</span> <span class="o">=</span> <span class="p">[</span><span class="n">i</span><span class="p">[</span><span class="mi">11</span><span class="p">:]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">datetimes</span><span class="p">]</span> <span class="c"># strip off the dates and only get the times</span>
+<span class="n">times</span> <span class="o">=</span> <span class="p">[</span><span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="n">entry</span><span class="p">,</span> <span class="s">'</span><span class="si">%</span><span class="s">H:</span><span class="si">%</span><span class="s">M:</span><span class="si">%</span><span class="s">S'</span><span class="p">)</span> <span class="k">for</span> <span class="n">entry</span> <span class="ow">in</span> <span class="n">times</span><span class="p">]</span> <span class="c"># convert to time type</span>
+</code></pre>
+</div>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">plt</span><span class="o">.</span><span class="n">xticks</span><span class="p">(</span><span class="n">rotation</span><span class="o">=</span><span class="mi">15</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">hist</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="n">bins</span> <span class="o">=</span> <span class="mi">24</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s">"Time"</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s">"Frequency"</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s">"Time Distribution of Crimes in San Francisco, by Hour"</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</code></pre>
+</div>
+
+<p><img src="output_22_0.png" alt="png" /></p>
+
+<p>For times, we can see that it peaks at 7:00PM-8:00PM, followed by 12:00AM-1:00AM. Most of the concentration is from afternoon to midnight. There is a dip in the morning.</p>
+
+<h4 id="are-noise-complaints-and-mobile-food-vendors-related">Are noise complaints and mobile food vendors related?</h4>
+<hr />
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="c"># initial look at entries that listed "mobile_food_facility" as the type of noise</span>
+<span class="n">food_noise</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_sql_query</span><span class="p">(</span><span class="s">"select Datetime, Lat, Lon, Neighborhood from noise where Type == 'mobile_food_facility'"</span><span class="p">,</span> <span class="n">sf_conn</span><span class="p">)</span>
+<span class="n">food_noise</span> <span class="c"># there's only 7 entries out of thousands!</span>
+</code></pre>
+</div>
+
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>Datetime</th>
+      <th>Lat</th>
+      <th>Lon</th>
+      <th>Neighborhood</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>2016-10-08 15:39:50</td>
+      <td>37.768141</td>
+      <td>-122.419785</td>
+      <td>Mission</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>2016-06-25 23:45:10</td>
+      <td>37.761364</td>
+      <td>-122.434097</td>
+      <td>Castro</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>2016-08-30 21:57:31</td>
+      <td>37.780362</td>
+      <td>-122.409218</td>
+      <td>South of Market</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>2016-10-04 17:43:25</td>
+      <td>37.768141</td>
+      <td>-122.419785</td>
+      <td>Mission</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>2015-09-02 10:57:17</td>
+      <td>37.773512</td>
+      <td>-122.450718</td>
+      <td>Panhandle</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>2016-03-01 06:24:48</td>
+      <td>37.769046</td>
+      <td>-122.413270</td>
+      <td>Mission</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>2016-11-03 16:41:55</td>
+      <td>37.768402</td>
+      <td>-122.419721</td>
+      <td>Mission</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="c"># generate points for all the food truck locations</span>
+<span class="n">truck_locs</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_sql_query</span><span class="p">(</span><span class="s">"select Latitude, Longitude from mobile_food_locations where Latitude &gt; 30"</span><span class="p">,</span> <span class="n">sf_conn</span><span class="p">)</span>
+
+<span class="kn">import</span> <span class="nn">shapely.geometry</span> <span class="kn">as</span> <span class="nn">geom</span>
+
+<span class="n">lonlat</span> <span class="o">=</span> <span class="p">[</span><span class="n">geom</span><span class="o">.</span><span class="n">Point</span><span class="p">(</span><span class="n">lon</span><span class="p">,</span> <span class="n">lat</span><span class="p">)</span> <span class="k">for</span> <span class="n">lon</span><span class="p">,</span> <span class="n">lat</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">truck_locs</span><span class="o">.</span><span class="n">Longitude</span><span class="p">,</span> <span class="n">truck_locs</span><span class="o">.</span><span class="n">Latitude</span><span class="p">)]</span>
+<span class="n">noise_points</span> <span class="o">=</span> <span class="n">truck_locs</span><span class="o">.</span><span class="n">drop</span><span class="p">([</span><span class="s">"Latitude"</span><span class="p">,</span> <span class="s">"Longitude"</span><span class="p">],</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span>
+
+<span class="n">noise_points</span> <span class="o">=</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">(</span><span class="n">noise_points</span><span class="p">,</span> <span class="n">geometry</span> <span class="o">=</span> <span class="n">lonlat</span><span class="p">)</span>
+</code></pre>
+</div>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="c"># generate zip codes based off longitude and latitude</span>
+<span class="kn">import</span> <span class="nn">geocoder</span>
+
+<span class="n">noise</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_sql_query</span><span class="p">(</span><span class="s">"select Lon, Lat, Neighborhood, Type from noise where Type in ('mobile_food_facility', 'other_excessive_noise') and Lon is not NULL"</span><span class="p">,</span> <span class="n">sf_conn</span><span class="p">)</span>
+
+<span class="n">noise</span><span class="p">[</span><span class="s">"zip"</span><span class="p">]</span> <span class="o">=</span> <span class="p">[(</span><span class="n">geocoder</span><span class="o">.</span><span class="n">google</span><span class="p">([</span><span class="n">lat</span><span class="p">,</span> <span class="n">lon</span><span class="p">],</span> <span class="n">method</span><span class="o">=</span><span class="s">'reverse'</span><span class="p">))</span><span class="o">.</span><span class="n">postal</span> <span class="k">for</span> <span class="n">lon</span><span class="p">,</span><span class="n">lat</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">noise</span><span class="o">.</span><span class="n">Lon</span><span class="p">,</span> <span class="n">noise</span><span class="o">.</span><span class="n">Lat</span><span class="p">)]</span>
+</code></pre>
+</div>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="c"># generate a count for how many noise complaints are in each zip area</span>
+<span class="n">noise_counts</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">noise</span><span class="p">[</span><span class="s">"zip"</span><span class="p">])</span><span class="o">.</span><span class="n">value_counts</span><span class="p">())</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+<span class="n">noise_counts</span><span class="o">.</span><span class="n">head</span><span class="p">()</span>
+<span class="c"># because of value_counts, the column names are off</span>
+</code></pre>
+</div>
+
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>index</th>
+      <th>zip</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>94122</td>
+      <td>138</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>94109</td>
+      <td>82</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>94110</td>
+      <td>79</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>94112</td>
+      <td>69</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>94103</td>
+      <td>63</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">sf_zips</span> <span class="o">=</span> <span class="n">noise_counts</span><span class="p">[</span><span class="s">'index'</span><span class="p">]</span> <span class="c"># for later use. stores (almost) all zips in the SF region</span>
+<span class="n">sf_zips</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_numeric</span><span class="p">(</span><span class="n">sf_zips</span><span class="p">)</span>
+</code></pre>
+</div>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="c"># merge shapefile df with noise complaints df</span>
+<span class="n">noise_locs</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">new_zips</span><span class="p">,</span> <span class="n">noise_counts</span><span class="p">,</span> <span class="n">how</span> <span class="o">=</span> <span class="s">'right'</span><span class="p">,</span> <span class="n">left_on</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_numeric</span><span class="p">(</span><span class="n">zips</span><span class="o">.</span><span class="n">ZCTA5CE10</span><span class="p">),</span> <span class="n">right_on</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_numeric</span><span class="p">(</span><span class="n">noise_counts</span><span class="p">[</span><span class="s">'index'</span><span class="p">]))</span>
+</code></pre>
+</div>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="c"># plot num of noise complaints with food truck points</span>
+<span class="n">base</span> <span class="o">=</span> <span class="n">noise_locs</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">column</span><span class="o">=</span><span class="s">'zip'</span><span class="p">,</span> <span class="n">scheme</span><span class="o">=</span><span class="s">'QUANTILES'</span><span class="p">,</span> <span class="n">legend</span> <span class="o">=</span> <span class="bp">True</span><span class="p">,</span> <span class="n">cmap</span> <span class="o">=</span> <span class="s">'GnBu'</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s">"Number of Noise Complaints and Food Truck Locations"</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s">"Latitude"</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s">"Longitude"</span><span class="p">)</span>
+<span class="n">fig</span><span class="o">.</span><span class="n">autofmt_xdate</span><span class="p">()</span>
+
+<span class="n">noise_points</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">ax</span> <span class="o">=</span> <span class="n">base</span><span class="p">,</span> <span class="n">color</span> <span class="o">=</span> <span class="s">"orangered"</span><span class="p">,</span> <span class="n">markersize</span> <span class="o">=</span> <span class="mi">4</span><span class="p">,</span> <span class="n">alpha</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">)</span>
+</code></pre>
+</div>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>&lt;matplotlib.axes._subplots.AxesSubplot at 0x28bea6d8&gt;
+</code></pre>
+</div>
+
+<p><img src="output_31_1.png" alt="png" /></p>
+
+<p>For this problem, I looked specifically at noise complaints under the type “mobile_food_facility” and “other_execessive_noise” because there were only 7 entries under mobile food, and I felt like at food trucks, there would be noise associated with it (i.e. noisy people eating and talking at the food truck).<br />
+I judged correlation based on locations (where noise complaints were, and where food trucks were).
+The map divides up number of noise complaints by zip code, and color codes by intensity. The darker shades are ‘noisier’. The orange/red dots are where the food trucks are located.<br />
+There may be a correlation between noise and food trucks, but <strong>the correlation is not strong</strong>. If you look at the top right region where there is a cluster of food trucks, that is <strong>one of the lowest noise complaint areas</strong>. There are a few purple areas that also have a high number of food trucks.<br />
+In addition, we have to take into account that ‘other_execessive_noise’ is <em>very broad</em>, and <em>not all</em> will be related to food trucks.</p>
+
+<h4 id="what-are-the-best-times-and-places-to-find-food-trucks">What are the best times and places to find food trucks?</h4>
+<hr />
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">query</span> <span class="o">=</span> <span class="s">"""select StartHour, EndHour, Latitude as Lat, Longitude as Lon from mobile_food_schedule
+JOIN mobile_food_locations ON mobile_food_locations.locationid = mobile_food_schedule.locationid
+where latitude &gt; 30
+group by mobile_food_schedule.locationid"""</span>
+
+<span class="n">truck_time_loc</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_sql_query</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">sf_conn</span><span class="p">)</span>
+
+<span class="n">lonlat</span> <span class="o">=</span> <span class="p">[</span><span class="n">geom</span><span class="o">.</span><span class="n">Point</span><span class="p">(</span><span class="n">lon</span><span class="p">,</span> <span class="n">lat</span><span class="p">)</span> <span class="k">for</span> <span class="n">lon</span><span class="p">,</span> <span class="n">lat</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">truck_time_loc</span><span class="o">.</span><span class="n">Lon</span><span class="p">,</span> <span class="n">truck_time_loc</span><span class="o">.</span><span class="n">Lat</span><span class="p">)]</span>
+<span class="n">truck_points</span> <span class="o">=</span> <span class="n">truck_time_loc</span><span class="o">.</span><span class="n">drop</span><span class="p">([</span><span class="s">"Lat"</span><span class="p">,</span> <span class="s">"Lon"</span><span class="p">],</span> <span class="n">axis</span> <span class="o">=</span> <span class="mi">1</span><span class="p">)</span>
+
+<span class="n">truck_points</span> <span class="o">=</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">(</span><span class="n">truck_points</span><span class="p">,</span> <span class="n">geometry</span> <span class="o">=</span> <span class="n">lonlat</span><span class="p">)</span>
+</code></pre>
+</div>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="kn">import</span> <span class="nn">numpy</span> <span class="kn">as</span> <span class="nn">np</span>
+
+<span class="k">def</span> <span class="nf">hour_range</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">):</span>
+    <span class="s">'''
+    Return a numpy array with the range of hours a specific food truck is open.
+    '''</span>
+    <span class="k">if</span> <span class="n">start</span> <span class="o">&lt;</span> <span class="n">end</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+    
+    <span class="c"># when a food truck is open past midnight</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">end</span> <span class="o">=</span> <span class="n">end</span> <span class="o">+</span> <span class="mi">24</span>
+        <span class="n">arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">remainder</span><span class="p">(</span><span class="n">arr</span><span class="p">,</span> <span class="mi">24</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">arr</span>
+</code></pre>
+</div>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">open_hours</span> <span class="o">=</span> <span class="p">[</span><span class="n">hour_range</span><span class="p">(</span><span class="n">StartHour</span><span class="p">,</span> <span class="n">EndHour</span><span class="p">)</span> <span class="k">for</span> <span class="n">StartHour</span><span class="p">,</span> <span class="n">EndHour</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">truck_points</span><span class="o">.</span><span class="n">StartHour</span><span class="p">,</span> <span class="n">truck_points</span><span class="o">.</span><span class="n">EndHour</span><span class="p">)]</span>
+<span class="n">open_hours</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">5</span><span class="p">]</span>
+</code></pre>
+</div>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>[array([17, 18, 19, 20], dtype=int64),
+ array([ 8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18], dtype=int64),
+ array([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20], dtype=int64),
+ array([ 6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16], dtype=int64),
+ array([10, 11, 12, 13, 14, 15, 16, 17, 18, 19], dtype=int64)]
+</code></pre>
+</div>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">all_hours</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">open_hours</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">hist</span><span class="p">(</span><span class="n">all_hours</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s">"Open Hours for all Food Trucks in SF"</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s">"Count"</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s">"Hour of the Day"</span><span class="p">)</span>
+</code></pre>
+</div>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>&lt;matplotlib.text.Text at 0x2e826940&gt;
+</code></pre>
+</div>
+
+<p><img src="output_37_1.png" alt="png" /></p>
+
+<p>According to the histogram above, you can get food from food trucks during all times of the day. <br />However, the most popular times are from <em>8AM</em> to <em>3PM</em>.
+<br />It is assumed that the open hours is generally the same across areas in SF.</p>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="c"># plot locations of all food trucks</span>
+<span class="n">SF_shapes</span> <span class="o">=</span> <span class="n">new_zips</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">to_numeric</span><span class="p">(</span><span class="n">new_zips</span><span class="p">[</span><span class="s">'ZCTA5CE10'</span><span class="p">])</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">sf_zips</span><span class="p">)]</span>
+<span class="n">base</span> <span class="o">=</span> <span class="n">SF_shapes</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">color</span> <span class="o">=</span> <span class="s">'white'</span><span class="p">)</span>
+<span class="n">truck_points</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">ax</span> <span class="o">=</span> <span class="n">base</span><span class="p">,</span> <span class="n">markersize</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span> <span class="n">alpha</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">,</span> <span class="n">color</span> <span class="o">=</span> <span class="s">'coral'</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s">"Food Truck Locations in SF"</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s">"Latitude"</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s">"Longitude"</span><span class="p">)</span>
+</code></pre>
+</div>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>&lt;matplotlib.text.Text at 0x2f279c88&gt;
+</code></pre>
+</div>
+
+<p><img src="output_39_1.png" alt="png" /></p>
+
+<p>This is a map of San Francisco with all the food truck locations. We can see a high concentration on the east side, particularly near Financial District.</p>
+
+<h4 id="is-there-a-relationship-between-housing-prices-and-any-of-the-other-tables">Is there a relationship between housing prices and any of the other tables?</h4>
+<hr />
+
+<p><br />First, look at <strong>private school quantities</strong> vs. median prices.</p>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">private_school_loc</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_sql_query</span><span class="p">(</span><span class="s">"select Lat, Lon from schools where Category == 'Independent / Private'"</span><span class="p">,</span> <span class="n">sf_conn</span><span class="p">)</span>
+
+<span class="n">lonlat</span> <span class="o">=</span> <span class="p">[</span><span class="n">geom</span><span class="o">.</span><span class="n">Point</span><span class="p">(</span><span class="n">lon</span><span class="p">,</span> <span class="n">lat</span><span class="p">)</span> <span class="k">for</span> <span class="n">lon</span><span class="p">,</span> <span class="n">lat</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">private_school_loc</span><span class="o">.</span><span class="n">Lon</span><span class="p">,</span> <span class="n">private_school_loc</span><span class="o">.</span><span class="n">Lat</span><span class="p">)]</span>
+<span class="n">private_school_loc</span> <span class="o">=</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">(</span><span class="n">private_school_loc</span><span class="p">,</span> <span class="n">geometry</span> <span class="o">=</span> <span class="n">lonlat</span><span class="p">,</span> <span class="n">crs</span> <span class="o">=</span> <span class="p">{</span><span class="s">'init'</span> <span class="p">:</span><span class="s">'epsg:4326'</span><span class="p">})</span>
+</code></pre>
+</div>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">new_df</span> <span class="o">=</span> <span class="n">new_df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">pd</span><span class="o">.</span><span class="n">to_numeric</span><span class="p">(</span><span class="n">new_df</span><span class="p">[</span><span class="s">'ZCTA5CE10'</span><span class="p">])</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">sf_zips</span><span class="p">)]</span>
+</code></pre>
+</div>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">base</span> <span class="o">=</span> <span class="n">new_df</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">column</span><span class="o">=</span><span class="s">'median_sqft'</span><span class="p">,</span> <span class="n">scheme</span><span class="o">=</span><span class="s">'QUANTILES'</span><span class="p">,</span> <span class="n">legend</span> <span class="o">=</span> <span class="bp">True</span><span class="p">,</span> <span class="n">cmap</span> <span class="o">=</span> <span class="s">'YlGnBu'</span><span class="p">)</span>
+
+<span class="n">private_school_loc</span> <span class="o">=</span> <span class="n">private_school_loc</span><span class="o">.</span><span class="n">to_crs</span><span class="p">(</span><span class="n">new_df</span><span class="o">.</span><span class="n">crs</span><span class="p">)</span>
+<span class="n">private_school_loc</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">ax</span> <span class="o">=</span> <span class="n">base</span><span class="p">,</span> <span class="n">markersize</span> <span class="o">=</span> <span class="mi">5</span><span class="p">,</span> <span class="n">alpha</span> <span class="o">=</span> <span class="mf">0.5</span><span class="p">,</span> <span class="n">color</span> <span class="o">=</span> <span class="s">'coral'</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s">"Home Prices and Private Schools Across SF"</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s">"Latitude"</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s">"Longitude"</span><span class="p">)</span>
+</code></pre>
+</div>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>&lt;matplotlib.text.Text at 0x33dbf630&gt;
+</code></pre>
+</div>
+
+<p><img src="output_45_1.png" alt="png" /></p>
+
+<p>There are a few points that are off the map. After researching a bit, They belong to the Presidio area and Treasure Island, which did not have any entries inside the Zillow database. Therefore, there was no boundary for that area.
+There is somewhat of a correlation between private schools and median price per sq ft. We can see there are more private schools in more expensive areas (which makes sense).<br />
+The least expensive areas, biege, appear to have the fewest.</p>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">query</span> <span class="o">=</span> <span class="s">"select Lat, Lon from crime where Datetime &gt; '2015-01-01' and Category != 'NON-CRIMINAL'"</span>
+<span class="n">crime_locs</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_sql_query</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">sf_conn</span><span class="p">)</span>
+<span class="n">lonlat</span> <span class="o">=</span> <span class="p">[</span><span class="n">geom</span><span class="o">.</span><span class="n">Point</span><span class="p">(</span><span class="n">lon</span><span class="p">,</span> <span class="n">lat</span><span class="p">)</span> <span class="k">for</span> <span class="n">lon</span><span class="p">,</span> <span class="n">lat</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">crime_locs</span><span class="o">.</span><span class="n">Lon</span><span class="p">,</span> <span class="n">crime_locs</span><span class="o">.</span><span class="n">Lat</span><span class="p">)]</span>
+<span class="n">crime_locs</span> <span class="o">=</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">(</span><span class="n">crime_locs</span><span class="p">,</span> <span class="n">geometry</span> <span class="o">=</span> <span class="n">lonlat</span><span class="p">)</span>
+</code></pre>
+</div>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="c"># looking at recent years, 2015 onwards</span>
+<span class="n">query</span> <span class="o">=</span> <span class="s">"""
+select crime.PdDistrict, count(crime.IncidntNum) as '# of Crime Incidences 2015-2016' from crime 
+where crime.Category != 'NON-CRIMINAL' and crime.Datetime &gt; '2015-01-01'
+group by crime.PdDistrict
+order by count(crime.IncidntNum) desc
+"""</span>
+<span class="n">pd</span><span class="o">.</span><span class="n">read_sql_query</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">sf_conn</span><span class="p">)</span>
+</code></pre>
+</div>
+
+<div>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>PdDistrict</th>
+      <th># of Crime Incidences 2015-2016</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>SOUTHERN</td>
+      <td>54189</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>NORTHERN</td>
+      <td>38172</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>MISSION</td>
+      <td>35586</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>CENTRAL</td>
+      <td>33146</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>BAYVIEW</td>
+      <td>27623</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>INGLESIDE</td>
+      <td>23434</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>TARAVAL</td>
+      <td>21279</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>TENDERLOIN</td>
+      <td>18698</td>
+    </tr>
+    <tr>
+      <th>8</th>
+      <td>PARK</td>
+      <td>16253</td>
+    </tr>
+    <tr>
+      <th>9</th>
+      <td>RICHMOND</td>
+      <td>16194</td>
+    </tr>
+    <tr>
+      <th>10</th>
+      <td>None</td>
+      <td>1</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="language-python highlighter-rouge"><pre class="highlight"><code><span class="n">base</span> <span class="o">=</span> <span class="n">new_df</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">column</span><span class="o">=</span><span class="s">'median_sqft'</span><span class="p">,</span> <span class="n">scheme</span><span class="o">=</span><span class="s">'QUANTILES'</span><span class="p">,</span> <span class="n">legend</span> <span class="o">=</span> <span class="bp">True</span><span class="p">,</span> <span class="n">cmap</span> <span class="o">=</span> <span class="s">'YlGnBu'</span><span class="p">)</span>
+
+<span class="c">#crime_locs.plot(ax = base, markersize = 5, alpha = 0.5, color = 'coral')</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">title</span><span class="p">(</span><span class="s">"Home Prices Across SF"</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylabel</span><span class="p">(</span><span class="s">"Latitude"</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">xlabel</span><span class="p">(</span><span class="s">"Longitude"</span><span class="p">)</span>
+</code></pre>
+</div>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>&lt;matplotlib.text.Text at 0x13757828&gt;
+</code></pre>
+</div>
+
+<p><img src="output_49_1.png" alt="png" /></p>
+
+<p>Since crime_locs, which stores all the points for crimes 2015-present, is over 28,000 rows, I was not able to plot them. Therefore, I just look at the counts of incidences divided by PD District and the median prices map.
+When looking at a map of PD Districts in SF (http://sanfranciscopolice.org/police-district-maps), Southern, Northern, and Mission are mostly in the north-east. This is also where prices are medium to high.
+<br />It might be because there are richer people in those areas, more crimes occur.</p>
+
+
+                <hr>
+
+                <ul class="pager">
+                    
+                    <li class="previous">
+                        <a href="/2017/02/25/a5/" data-toggle="tooltip" data-placement="top" title="Assignment 5">&larr; Previous Post</a>
+                    </li>
+                    
+                    
+                </ul>
+
+            </div>
+        </div>
+    </div>
+</article>
+
+<hr>
+
+
+    <!-- Footer -->
+<footer>
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                <ul class="list-inline text-center">
+                    <li>
+                        <a href="/feed.xml">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-rss fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                    
+                    
+                    
+                    <li>
+                        <a href="https://github.com/laic5">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-github fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                    
+                    
+                    <li>
+                        <a href="mailto:CynthiaLai1996@gmail.com">
+                            <span class="fa-stack fa-lg">
+                                <i class="fa fa-circle fa-stack-2x"></i>
+                                <i class="fa fa-envelope fa-stack-1x fa-inverse"></i>
+                            </span>
+                        </a>
+                    </li>
+                    
+                </ul>
+                <p class="copyright text-muted">Copyright &copy;  2017</p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- jQuery -->
+<script src="/js/jquery.min.js "></script>
+
+<!-- Bootstrap Core JavaScript -->
+<script src="/js/bootstrap.min.js "></script>
+
+<!-- Custom Theme JavaScript -->
+<script src="/js/clean-blog.min.js "></script>
+
+
+    
+
+
+</body>
+
+</html>

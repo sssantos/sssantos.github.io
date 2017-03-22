@@ -1,0 +1,4955 @@
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="http://jekyllrb.com" version="3.4.2">Jekyll</generator><link href="http://localhost:4000/feed.xml" rel="self" type="application/atom+xml" /><link href="http://localhost:4000/" rel="alternate" type="text/html" /><updated>2017-03-21T22:38:36-07:00</updated><id>http://localhost:4000/</id><title type="html">Cindy Lai’s Data Treasure Trove</title><subtitle>Cindy Lai's STA 141B portfolio site</subtitle><entry><title type="html">Assignment 6</title><link href="http://localhost:4000/2017/03/18/a6/" rel="alternate" type="text/html" title="Assignment 6" /><published>2017-03-18T18:00:00-07:00</published><updated>2017-03-18T18:00:00-07:00</updated><id>http://localhost:4000/2017/03/18/a6</id><content type="html" xml:base="http://localhost:4000/2017/03/18/a6/"># Assignment 6
+
+
+In this assignment, you'll analyze a collection of data sets from the [San Francisco Open Data Portal](http://data.sfgov.org/) and [Zillow](https://www.zillow.com/). The data sets have been stored in the SQLite database `sf_data.sqlite`, which you can [download here](http://anson.ucdavis.edu/~nulle/sf_data.sqlite). The database contains the following tables:
+
+Table                   | Description
+----------------------- | -----------
+`crime`                 | Crime reports dating back to 2010.
+`mobile_food_locations` | List of all locations where mobile food vendors sell.
+`mobile_food_permits`   | List of all mobile food vendor permits. More details [here](https://data.sfgov.org/api/views/rqzj-sfat/files/8g2f5RV4PEk0_b24iJEtgEet9gnh_eA27GlqoOjjK4k?download=true&amp;filename=DPW_DataDictionary_Mobile-Food-Facility-Permit.pdf).
+`mobile_food_schedule`  | Schedules for mobile food vendors.
+`noise`                 | Noise complaints dating back to August 2015.
+`parking`               | List of all parking lots.
+`parks`                 | List of all parks.
+`schools`               | List of all schools.
+`zillow`                | Zillow rent and housing statistics dating back to 1996. More details [here](https://www.zillow.com/research/data/).
+
+The `mobile_food_` tables are explicitly connected through the `locationid` and `permit` columns. The other tables are not connected, but you may be able to connect them using dates, latitude/longitude, or postal codes.
+
+Shapefiles for US postal codes are available [here](https://www.census.gov/geo/maps-data/data/cbf/cbf_zcta.html). These may be useful for converting latitude/longitude to postal codes.
+
+Shapefiles for San Francisco Neighborhoods are available [here](https://data.sfgov.org/Geographic-Locations-and-Boundaries/SF-Find-Neighborhoods/pty2-tcw4).
+
+__Exercise 1.1.__ Which mobile food vendor(s) sells at the most locations?
+
+
+```python
+from sqlalchemy import create_engine
+import pandas as pd
+
+sf_conn = create_engine('sqlite:///sf_data.sqlite')
+
+sql_query = &quot;&quot;&quot;
+select Applicant, count(distinct locationid) from mobile_food_permits
+JOIN mobile_food_schedule ON mobile_food_schedule.permit = mobile_food_permits.permit
+group by Applicant
+order by count(distinct locationid) desc
+&quot;&quot;&quot;
+
+pd.read_sql_query(sql_query, sf_conn).head()
+```
+
+
+
+
+&lt;div&gt;
+&lt;table border=&quot;1&quot; class=&quot;dataframe&quot;&gt;
+  &lt;thead&gt;
+    &lt;tr style=&quot;text-align: right;&quot;&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;Applicant&lt;/th&gt;
+      &lt;th&gt;count(distinct locationid)&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;May Catering&lt;/td&gt;
+      &lt;td&gt;58&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;1&lt;/th&gt;
+      &lt;td&gt;Anas Goodies Catering&lt;/td&gt;
+      &lt;td&gt;37&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;2&lt;/th&gt;
+      &lt;td&gt;Natan's Catering&lt;/td&gt;
+      &lt;td&gt;37&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;3&lt;/th&gt;
+      &lt;td&gt;Liang Bai Ping&lt;/td&gt;
+      &lt;td&gt;33&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;4&lt;/th&gt;
+      &lt;td&gt;Park's Catering&lt;/td&gt;
+      &lt;td&gt;23&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+
+
+
+From the SQL query, we can see that May Catering sells at the most locations (58 distinct locations).&lt;br&gt;
+Anas Goodies Catering and Natan's Catering follow after.
+___
+
+__Exercise 1.2.__ Ask and use the database to analyze 5 questions about San Francisco. For each question, write at least 150 words and support your answer with plots. Make a map for at least 2 of the 5 questions.
+
+You should try to come up with some questions on your own, but these are examples of reasonable questions:
+
+* Which parts of the city are the most and least expensive?
+* Which parts of the city are the most dangerous (and at what times)?
+* Are noise complaints and mobile food vendors related?
+* What are the best times and places to find food trucks?
+* Is there a relationship between housing prices and any of the other tables?
+
+Please make sure to clearly state each of your questions in your submission.
+
+#### Which parts of the city are the most and least expensive?
+----------------------------------------
+
+
+```python
+import geopandas as gpd
+#from mpl_toolkits.basemap import Basemap
+
+
+shp_fn = 'cb_2015_us_zcta510_500k.shp'  #shapefile
+cities = gpd.read_file(shp_fn)
+```
+
+
+```python
+zips = cities[cities.ZCTA5CE10.str.startswith(&quot;9&quot;)]
+zips = zips[pd.to_numeric(zips.ZCTA5CE10) &lt;= 96199]
+```
+
+
+```python
+# get the prices from the different regions in the zillow db
+region_median_price = pd.read_sql_query(&quot;select RegionName, avg(zillow.MedianSoldPricePerSqft_AllHomes) median_sqft from zillow group by RegionName&quot;, sf_conn)
+region_median_price.tail()
+```
+
+
+
+
+&lt;div&gt;
+&lt;table border=&quot;1&quot; class=&quot;dataframe&quot;&gt;
+  &lt;thead&gt;
+    &lt;tr style=&quot;text-align: right;&quot;&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;RegionName&lt;/th&gt;
+      &lt;th&gt;median_sqft&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;th&gt;21&lt;/th&gt;
+      &lt;td&gt;94131&lt;/td&gt;
+      &lt;td&gt;560.122866&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;22&lt;/th&gt;
+      &lt;td&gt;94132&lt;/td&gt;
+      &lt;td&gt;385.384982&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;23&lt;/th&gt;
+      &lt;td&gt;94133&lt;/td&gt;
+      &lt;td&gt;638.636839&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;24&lt;/th&gt;
+      &lt;td&gt;94134&lt;/td&gt;
+      &lt;td&gt;347.027455&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;25&lt;/th&gt;
+      &lt;td&gt;94158&lt;/td&gt;
+      &lt;td&gt;657.211820&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+
+
+
+
+```python
+new_zips = zips.reset_index()
+
+# join the shapefile columns with the zillow df to associate price with the map region
+new_df = pd.merge(new_zips, region_median_price, how = 'right', left_on = pd.to_numeric(zips.ZCTA5CE10), right_on = 'RegionName')
+new_df.head()
+```
+
+
+
+
+&lt;div&gt;
+&lt;table border=&quot;1&quot; class=&quot;dataframe&quot;&gt;
+  &lt;thead&gt;
+    &lt;tr style=&quot;text-align: right;&quot;&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;index&lt;/th&gt;
+      &lt;th&gt;AFFGEOID10&lt;/th&gt;
+      &lt;th&gt;ALAND10&lt;/th&gt;
+      &lt;th&gt;AWATER10&lt;/th&gt;
+      &lt;th&gt;GEOID10&lt;/th&gt;
+      &lt;th&gt;ZCTA5CE10&lt;/th&gt;
+      &lt;th&gt;geometry&lt;/th&gt;
+      &lt;th&gt;RegionName&lt;/th&gt;
+      &lt;th&gt;median_sqft&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;997&lt;/td&gt;
+      &lt;td&gt;8600000US94108&lt;/td&gt;
+      &lt;td&gt;698155&lt;/td&gt;
+      &lt;td&gt;0&lt;/td&gt;
+      &lt;td&gt;94108&lt;/td&gt;
+      &lt;td&gt;94108&lt;/td&gt;
+      &lt;td&gt;POLYGON ((-122.414826 37.794988, -122.404412 3...&lt;/td&gt;
+      &lt;td&gt;94108&lt;/td&gt;
+      &lt;td&gt;501.013201&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;1&lt;/th&gt;
+      &lt;td&gt;5104&lt;/td&gt;
+      &lt;td&gt;8600000US94104&lt;/td&gt;
+      &lt;td&gt;200857&lt;/td&gt;
+      &lt;td&gt;0&lt;/td&gt;
+      &lt;td&gt;94104&lt;/td&gt;
+      &lt;td&gt;94104&lt;/td&gt;
+      &lt;td&gt;POLYGON ((-122.404613 37.793565, -122.401315 3...&lt;/td&gt;
+      &lt;td&gt;94104&lt;/td&gt;
+      &lt;td&gt;1336.128581&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;2&lt;/th&gt;
+      &lt;td&gt;5154&lt;/td&gt;
+      &lt;td&gt;8600000US94122&lt;/td&gt;
+      &lt;td&gt;6124846&lt;/td&gt;
+      &lt;td&gt;0&lt;/td&gt;
+      &lt;td&gt;94122&lt;/td&gt;
+      &lt;td&gt;94122&lt;/td&gt;
+      &lt;td&gt;POLYGON ((-122.50987 37.76409, -122.508335 37....&lt;/td&gt;
+      &lt;td&gt;94122&lt;/td&gt;
+      &lt;td&gt;453.210167&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;3&lt;/th&gt;
+      &lt;td&gt;5156&lt;/td&gt;
+      &lt;td&gt;8600000US94158&lt;/td&gt;
+      &lt;td&gt;1703879&lt;/td&gt;
+      &lt;td&gt;1342698&lt;/td&gt;
+      &lt;td&gt;94158&lt;/td&gt;
+      &lt;td&gt;94158&lt;/td&gt;
+      &lt;td&gt;POLYGON ((-122.397866 37.772323, -122.396381 3...&lt;/td&gt;
+      &lt;td&gt;94158&lt;/td&gt;
+      &lt;td&gt;657.211820&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;4&lt;/th&gt;
+      &lt;td&gt;6078&lt;/td&gt;
+      &lt;td&gt;8600000US94110&lt;/td&gt;
+      &lt;td&gt;6019920&lt;/td&gt;
+      &lt;td&gt;12207&lt;/td&gt;
+      &lt;td&gt;94110&lt;/td&gt;
+      &lt;td&gt;94110&lt;/td&gt;
+      &lt;td&gt;POLYGON ((-122.426722 37.736372, -122.425082 3...&lt;/td&gt;
+      &lt;td&gt;94110&lt;/td&gt;
+      &lt;td&gt;543.998864&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+
+
+
+
+```python
+%matplotlib inline
+import matplotlib.pyplot as plt
+
+fig, ax = plt.subplots(1, figsize=(4,6))
+plt.title(&quot;Median Price per Sq. Ft in San Francisco&quot;)
+plt.ylabel(&quot;Latitude&quot;)
+fig.autofmt_xdate()
+
+new_df.plot(ax = ax, column='median_sqft', scheme='QUANTILES', legend = True)
+```
+
+
+
+![png](output_10_1.png)
+
+
+*Ignore the purple piece behind the legend.*&lt;br&gt;
+According to the color-coded map, the areas in **brown and yellow** are the most expensive areas of SF. The **dark purple** are the least expensive areas. &lt;br&gt;We can see that the majority of purple areas are on the bottom part of SF, while the expensive areas are concentrated in the top right. 
+Some of the expensive neighborhoods could be Mission Bay, Presidio/Presidio Heights, and North Beach.
+
+&lt;br&gt;
+#### Which parts of the city are the most dangerous (and at what times)?
+------------
+
+Since it is hard to come up with a methodical method to objectively quantify how severe the crimes are, I will treat all crimes equally and rate by crime quantity only. 
+&lt;br&gt;I did exclude non-criminal incidences, but that did not change the ordering.
+
+```python
+# get the districts sorted by the number of crime incidences over all time
+pd.read_sql_query(&quot;select crime.PdDistrict, count(crime.IncidntNum) from crime where crime.Category != 'NON-CRIMINAL' group by crime.PdDistrict order by count(crime.IncidntNum) desc&quot;, sf_conn)
+```
+
+
+
+
+&lt;div&gt;
+&lt;table border=&quot;1&quot; class=&quot;dataframe&quot;&gt;
+  &lt;thead&gt;
+    &lt;tr style=&quot;text-align: right;&quot;&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;PdDistrict&lt;/th&gt;
+      &lt;th&gt;IncidntNum)&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;SOUTHERN&lt;/td&gt;
+      &lt;td&gt;170602&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;1&lt;/th&gt;
+      &lt;td&gt;MISSION&lt;/td&gt;
+      &lt;td&gt;119729&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;2&lt;/th&gt;
+      &lt;td&gt;NORTHERN&lt;/td&gt;
+      &lt;td&gt;110707&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;3&lt;/th&gt;
+      &lt;td&gt;CENTRAL&lt;/td&gt;
+      &lt;td&gt;94437&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;4&lt;/th&gt;
+      &lt;td&gt;BAYVIEW&lt;/td&gt;
+      &lt;td&gt;93121&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;5&lt;/th&gt;
+      &lt;td&gt;INGLESIDE&lt;/td&gt;
+      &lt;td&gt;80217&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;6&lt;/th&gt;
+      &lt;td&gt;TENDERLOIN&lt;/td&gt;
+      &lt;td&gt;73430&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;7&lt;/th&gt;
+      &lt;td&gt;TARAVAL&lt;/td&gt;
+      &lt;td&gt;65774&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;8&lt;/th&gt;
+      &lt;td&gt;PARK&lt;/td&gt;
+      &lt;td&gt;51486&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;9&lt;/th&gt;
+      &lt;td&gt;RICHMOND&lt;/td&gt;
+      &lt;td&gt;48195&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;10&lt;/th&gt;
+      &lt;td&gt;None&lt;/td&gt;
+      &lt;td&gt;1&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+
+
+
+
+```python
+# looking at recent years, 2015 onwards
+query = &quot;&quot;&quot;
+select crime.PdDistrict, count(crime.IncidntNum) as '# of Crime Incidences 2015-2016' from crime 
+where crime.Category != 'NON-CRIMINAL' and crime.Datetime &gt; '2015-01-01'
+group by crime.PdDistrict
+order by count(crime.IncidntNum) desc
+&quot;&quot;&quot;
+pd.read_sql_query(query, sf_conn)
+```
+
+
+
+
+&lt;div&gt;
+&lt;table border=&quot;1&quot; class=&quot;dataframe&quot;&gt;
+  &lt;thead&gt;
+    &lt;tr style=&quot;text-align: right;&quot;&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;PdDistrict&lt;/th&gt;
+      &lt;th&gt;# of Crime Incidences 2015-2016&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;SOUTHERN&lt;/td&gt;
+      &lt;td&gt;54189&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;1&lt;/th&gt;
+      &lt;td&gt;NORTHERN&lt;/td&gt;
+      &lt;td&gt;38172&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;2&lt;/th&gt;
+      &lt;td&gt;MISSION&lt;/td&gt;
+      &lt;td&gt;35586&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;3&lt;/th&gt;
+      &lt;td&gt;CENTRAL&lt;/td&gt;
+      &lt;td&gt;33146&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;4&lt;/th&gt;
+      &lt;td&gt;BAYVIEW&lt;/td&gt;
+      &lt;td&gt;27623&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;5&lt;/th&gt;
+      &lt;td&gt;INGLESIDE&lt;/td&gt;
+      &lt;td&gt;23434&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;6&lt;/th&gt;
+      &lt;td&gt;TARAVAL&lt;/td&gt;
+      &lt;td&gt;21279&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;7&lt;/th&gt;
+      &lt;td&gt;TENDERLOIN&lt;/td&gt;
+      &lt;td&gt;18698&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;8&lt;/th&gt;
+      &lt;td&gt;PARK&lt;/td&gt;
+      &lt;td&gt;16253&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;9&lt;/th&gt;
+      &lt;td&gt;RICHMOND&lt;/td&gt;
+      &lt;td&gt;16194&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;10&lt;/th&gt;
+      &lt;td&gt;None&lt;/td&gt;
+      &lt;td&gt;1&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+
+
+
+
+```python
+# see what types of crimes are most common in the top-crime regions
+crime_type_counts = pd.read_sql_query(&quot;&quot;&quot;select PdDistrict, Category, count(Category) from crime 
+where crime.PdDistrict in ('SOUTHERN', 'NORTHERN', 'MISSION') and Datetime &gt; '2015-01-01'
+group by PdDistrict, crime.Category
+order by count(crime.Category) desc&quot;&quot;&quot;, sf_conn)
+crime_type_counts.head(3)
+```
+
+
+
+
+&lt;div&gt;
+&lt;table border=&quot;1&quot; class=&quot;dataframe&quot;&gt;
+  &lt;thead&gt;
+    &lt;tr style=&quot;text-align: right;&quot;&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;PdDistrict&lt;/th&gt;
+      &lt;th&gt;Category&lt;/th&gt;
+      &lt;th&gt;count(Category)&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;SOUTHERN&lt;/td&gt;
+      &lt;td&gt;LARCENY/THEFT&lt;/td&gt;
+      &lt;td&gt;21122&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;1&lt;/th&gt;
+      &lt;td&gt;NORTHERN&lt;/td&gt;
+      &lt;td&gt;LARCENY/THEFT&lt;/td&gt;
+      &lt;td&gt;15697&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;2&lt;/th&gt;
+      &lt;td&gt;SOUTHERN&lt;/td&gt;
+      &lt;td&gt;NON-CRIMINAL&lt;/td&gt;
+      &lt;td&gt;7239&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+
+
+
+To see the differences across the 3 regions (Southern, Northern, and Mission), I created a barplot divided by the most common crimes, where each region is a separate color.
+
+
+```python
+import seaborn as sns
+
+g = sns.factorplot(x=&quot;Category&quot;, y=&quot;count(Category)&quot;, hue=&quot;PdDistrict&quot;, data=crime_type_counts.head(21),
+                   size=6, kind=&quot;bar&quot;, palette=&quot;muted&quot;)
+
+plt.xticks(rotation=30)
+plt.xlabel(&quot;Crime Category&quot;)
+plt.title(&quot;Crime Distribution Across Southern, Northern, Mission 2015-2016&quot;)
+
+g.despine(left=True)
+g.set_ylabels(&quot;Count&quot;)
+```
+
+
+
+
+    &lt;seaborn.axisgrid.FacetGrid at 0x15e59ac8&gt;
+
+
+
+
+![png](output_18_1.png)
+
+
+From the tables above, we can see which districts are the most dangerous (highest number of crime incidents).&lt;br&gt;
+From our findings, Southern is significantly more dangerous (by number of incidences), followed by Mission and Northern.&lt;br&gt;
+Interestingly, when you look at crimes from 2015 onwards, Northern has a higher number of incidences than Mission. Mission overall, had *8%* more crimes than Northern, but in recent years, Northern has *7%* more than Mission.&lt;br&gt;This could indicate that one neighborhood (Northern) got more dangerous recently and/or Mission got more safe.
+The most common crime is theft. Glancing at the graph, Mission crime types seem more serious (i.e. vehicle theft) compared to Northern. Northern only comes higher overall because of the number of thefts. However over most of the other categories, Mission has higher counts.
+
+
+```python
+# don't look at non-criminal
+datetimes = pd.read_sql_query(&quot;select crime.Datetime from crime where crime.Category != 'NON-CRIMINAL'&quot;, sf_conn)
+#datetimes.head()
+datetimes = list(datetimes[&quot;Datetime&quot;])
+```
+
+
+```python
+# extract out the times crimes usually occur at
+
+from datetime import datetime
+
+times = [i[11:] for i in datetimes] # strip off the dates and only get the times
+times = [datetime.strptime(entry, '%H:%M:%S') for entry in times] # convert to time type
+```
+
+
+```python
+plt.xticks(rotation=15)
+plt.hist(times, bins = 24)
+plt.xlabel(&quot;Time&quot;)
+plt.ylabel(&quot;Frequency&quot;)
+plt.title(&quot;Time Distribution of Crimes in San Francisco, by Hour&quot;)
+plt.show()
+```
+
+
+![png](output_22_0.png)
+
+
+For times, we can see that it peaks at 7:00PM-8:00PM, followed by 12:00AM-1:00AM. Most of the concentration is from afternoon to midnight. There is a dip in the morning.
+
+
+#### Are noise complaints and mobile food vendors related?
+----------------------------------
+
+
+```python
+# initial look at entries that listed &quot;mobile_food_facility&quot; as the type of noise
+food_noise = pd.read_sql_query(&quot;select Datetime, Lat, Lon, Neighborhood from noise where Type == 'mobile_food_facility'&quot;, sf_conn)
+food_noise # there's only 7 entries out of thousands!
+```
+
+
+
+
+&lt;div&gt;
+&lt;table border=&quot;1&quot; class=&quot;dataframe&quot;&gt;
+  &lt;thead&gt;
+    &lt;tr style=&quot;text-align: right;&quot;&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;Datetime&lt;/th&gt;
+      &lt;th&gt;Lat&lt;/th&gt;
+      &lt;th&gt;Lon&lt;/th&gt;
+      &lt;th&gt;Neighborhood&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;2016-10-08 15:39:50&lt;/td&gt;
+      &lt;td&gt;37.768141&lt;/td&gt;
+      &lt;td&gt;-122.419785&lt;/td&gt;
+      &lt;td&gt;Mission&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;1&lt;/th&gt;
+      &lt;td&gt;2016-06-25 23:45:10&lt;/td&gt;
+      &lt;td&gt;37.761364&lt;/td&gt;
+      &lt;td&gt;-122.434097&lt;/td&gt;
+      &lt;td&gt;Castro&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;2&lt;/th&gt;
+      &lt;td&gt;2016-08-30 21:57:31&lt;/td&gt;
+      &lt;td&gt;37.780362&lt;/td&gt;
+      &lt;td&gt;-122.409218&lt;/td&gt;
+      &lt;td&gt;South of Market&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;3&lt;/th&gt;
+      &lt;td&gt;2016-10-04 17:43:25&lt;/td&gt;
+      &lt;td&gt;37.768141&lt;/td&gt;
+      &lt;td&gt;-122.419785&lt;/td&gt;
+      &lt;td&gt;Mission&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;4&lt;/th&gt;
+      &lt;td&gt;2015-09-02 10:57:17&lt;/td&gt;
+      &lt;td&gt;37.773512&lt;/td&gt;
+      &lt;td&gt;-122.450718&lt;/td&gt;
+      &lt;td&gt;Panhandle&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;5&lt;/th&gt;
+      &lt;td&gt;2016-03-01 06:24:48&lt;/td&gt;
+      &lt;td&gt;37.769046&lt;/td&gt;
+      &lt;td&gt;-122.413270&lt;/td&gt;
+      &lt;td&gt;Mission&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;6&lt;/th&gt;
+      &lt;td&gt;2016-11-03 16:41:55&lt;/td&gt;
+      &lt;td&gt;37.768402&lt;/td&gt;
+      &lt;td&gt;-122.419721&lt;/td&gt;
+      &lt;td&gt;Mission&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+
+
+
+
+```python
+# generate points for all the food truck locations
+truck_locs = pd.read_sql_query(&quot;select Latitude, Longitude from mobile_food_locations where Latitude &gt; 30&quot;, sf_conn)
+
+import shapely.geometry as geom
+
+lonlat = [geom.Point(lon, lat) for lon, lat in zip(truck_locs.Longitude, truck_locs.Latitude)]
+noise_points = truck_locs.drop([&quot;Latitude&quot;, &quot;Longitude&quot;], axis = 1)
+
+noise_points = gpd.GeoDataFrame(noise_points, geometry = lonlat)
+```
+
+
+```python
+# generate zip codes based off longitude and latitude
+import geocoder
+
+noise = pd.read_sql_query(&quot;select Lon, Lat, Neighborhood, Type from noise where Type in ('mobile_food_facility', 'other_excessive_noise') and Lon is not NULL&quot;, sf_conn)
+
+noise[&quot;zip&quot;] = [(geocoder.google([lat, lon], method='reverse')).postal for lon,lat in zip(noise.Lon, noise.Lat)]
+```
+
+
+```python
+# generate a count for how many noise complaints are in each zip area
+noise_counts = pd.DataFrame(pd.Series(noise[&quot;zip&quot;]).value_counts()).reset_index()
+noise_counts.head()
+# because of value_counts, the column names are off
+```
+
+
+
+
+&lt;div&gt;
+&lt;table border=&quot;1&quot; class=&quot;dataframe&quot;&gt;
+  &lt;thead&gt;
+    &lt;tr style=&quot;text-align: right;&quot;&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;index&lt;/th&gt;
+      &lt;th&gt;zip&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;94122&lt;/td&gt;
+      &lt;td&gt;138&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;1&lt;/th&gt;
+      &lt;td&gt;94109&lt;/td&gt;
+      &lt;td&gt;82&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;2&lt;/th&gt;
+      &lt;td&gt;94110&lt;/td&gt;
+      &lt;td&gt;79&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;3&lt;/th&gt;
+      &lt;td&gt;94112&lt;/td&gt;
+      &lt;td&gt;69&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;4&lt;/th&gt;
+      &lt;td&gt;94103&lt;/td&gt;
+      &lt;td&gt;63&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+
+
+
+
+```python
+sf_zips = noise_counts['index'] # for later use. stores (almost) all zips in the SF region
+sf_zips = pd.to_numeric(sf_zips)
+```
+
+
+```python
+# merge shapefile df with noise complaints df
+noise_locs = pd.merge(new_zips, noise_counts, how = 'right', left_on = pd.to_numeric(zips.ZCTA5CE10), right_on = pd.to_numeric(noise_counts['index']))
+```
+
+
+```python
+# plot num of noise complaints with food truck points
+base = noise_locs.plot(column='zip', scheme='QUANTILES', legend = True, cmap = 'GnBu')
+plt.title(&quot;Number of Noise Complaints and Food Truck Locations&quot;)
+plt.ylabel(&quot;Latitude&quot;)
+plt.xlabel(&quot;Longitude&quot;)
+fig.autofmt_xdate()
+
+noise_points.plot(ax = base, color = &quot;orangered&quot;, markersize = 4, alpha = 0.5)
+```
+
+
+
+
+    &lt;matplotlib.axes._subplots.AxesSubplot at 0x28bea6d8&gt;
+
+
+
+
+![png](output_31_1.png)
+
+
+For this problem, I looked specifically at noise complaints under the type &quot;mobile_food_facility&quot; and &quot;other_execessive_noise&quot; because there were only 7 entries under mobile food, and I felt like at food trucks, there would be noise associated with it (i.e. noisy people eating and talking at the food truck).&lt;br&gt;
+I judged correlation based on locations (where noise complaints were, and where food trucks were).
+The map divides up number of noise complaints by zip code, and color codes by intensity. The darker shades are 'noisier'. The orange/red dots are where the food trucks are located.&lt;br&gt;
+There may be a correlation between noise and food trucks, but **the correlation is not strong**. If you look at the top right region where there is a cluster of food trucks, that is **one of the lowest noise complaint areas**. There are a few purple areas that also have a high number of food trucks.&lt;br&gt;
+In addition, we have to take into account that 'other_execessive_noise' is _very broad_, and _not all_ will be related to food trucks.
+
+#### What are the best times and places to find food trucks?
+--------------------------
+
+
+```python
+query = &quot;&quot;&quot;select StartHour, EndHour, Latitude as Lat, Longitude as Lon from mobile_food_schedule
+JOIN mobile_food_locations ON mobile_food_locations.locationid = mobile_food_schedule.locationid
+where latitude &gt; 30
+group by mobile_food_schedule.locationid&quot;&quot;&quot;
+
+truck_time_loc = pd.read_sql_query(query, sf_conn)
+
+lonlat = [geom.Point(lon, lat) for lon, lat in zip(truck_time_loc.Lon, truck_time_loc.Lat)]
+truck_points = truck_time_loc.drop([&quot;Lat&quot;, &quot;Lon&quot;], axis = 1)
+
+truck_points = gpd.GeoDataFrame(truck_points, geometry = lonlat)
+```
+
+
+```python
+import numpy as np
+
+def hour_range(start, end):
+    '''
+    Return a numpy array with the range of hours a specific food truck is open.
+    '''
+    if start &lt; end:
+        return np.arange(start, end + 1)
+    
+    # when a food truck is open past midnight
+    else:
+        end = end + 24
+        arr = np.arange(start, end + 1)
+        arr = np.remainder(arr, 24)
+        return arr
+```
+
+
+```python
+open_hours = [hour_range(StartHour, EndHour) for StartHour, EndHour in zip(truck_points.StartHour, truck_points.EndHour)]
+open_hours[0:5]
+```
+
+
+
+
+    [array([17, 18, 19, 20], dtype=int64),
+     array([ 8,  9, 10, 11, 12, 13, 14, 15, 16, 17, 18], dtype=int64),
+     array([10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20], dtype=int64),
+     array([ 6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16], dtype=int64),
+     array([10, 11, 12, 13, 14, 15, 16, 17, 18, 19], dtype=int64)]
+
+
+
+
+```python
+all_hours = np.concatenate(open_hours)
+plt.hist(all_hours)
+plt.title(&quot;Open Hours for all Food Trucks in SF&quot;)
+plt.ylabel(&quot;Count&quot;)
+plt.xlabel(&quot;Hour of the Day&quot;)
+```
+
+
+
+
+    &lt;matplotlib.text.Text at 0x2e826940&gt;
+
+
+
+
+![png](output_37_1.png)
+
+
+According to the histogram above, you can get food from food trucks during all times of the day. &lt;br&gt;However, the most popular times are from *8AM* to _3PM_.
+&lt;br&gt;It is assumed that the open hours is generally the same across areas in SF.
+
+
+```python
+# plot locations of all food trucks
+SF_shapes = new_zips.loc[pd.to_numeric(new_zips['ZCTA5CE10']).isin(sf_zips)]
+base = SF_shapes.plot(color = 'white')
+truck_points.plot(ax = base, markersize = 5, alpha = 0.5, color = 'coral')
+plt.title(&quot;Food Truck Locations in SF&quot;)
+plt.ylabel(&quot;Latitude&quot;)
+plt.xlabel(&quot;Longitude&quot;)
+```
+
+
+
+
+    &lt;matplotlib.text.Text at 0x2f279c88&gt;
+
+
+
+
+![png](output_39_1.png)
+
+
+This is a map of San Francisco with all the food truck locations. We can see a high concentration on the east side, particularly near Financial District.
+
+#### Is there a relationship between housing prices and any of the other tables?
+--------------------
+
+&lt;br&gt;First, look at **private school quantities** vs. median prices.
+
+
+```python
+private_school_loc = pd.read_sql_query(&quot;select Lat, Lon from schools where Category == 'Independent / Private'&quot;, sf_conn)
+
+lonlat = [geom.Point(lon, lat) for lon, lat in zip(private_school_loc.Lon, private_school_loc.Lat)]
+private_school_loc = gpd.GeoDataFrame(private_school_loc, geometry = lonlat, crs = {'init' :'epsg:4326'})
+```
+
+
+```python
+new_df = new_df.loc[pd.to_numeric(new_df['ZCTA5CE10']).isin(sf_zips)]
+```
+
+
+```python
+base = new_df.plot(column='median_sqft', scheme='QUANTILES', legend = True, cmap = 'YlGnBu')
+
+private_school_loc = private_school_loc.to_crs(new_df.crs)
+private_school_loc.plot(ax = base, markersize = 5, alpha = 0.5, color = 'coral')
+
+plt.title(&quot;Home Prices and Private Schools Across SF&quot;)
+plt.ylabel(&quot;Latitude&quot;)
+plt.xlabel(&quot;Longitude&quot;)
+```
+
+
+
+
+    &lt;matplotlib.text.Text at 0x33dbf630&gt;
+
+
+
+
+![png](output_45_1.png)
+
+
+There are a few points that are off the map. After researching a bit, They belong to the Presidio area and Treasure Island, which did not have any entries inside the Zillow database. Therefore, there was no boundary for that area.
+There is somewhat of a correlation between private schools and median price per sq ft. We can see there are more private schools in more expensive areas (which makes sense).&lt;br&gt;
+The least expensive areas, biege, appear to have the fewest.
+
+
+```python
+query = &quot;select Lat, Lon from crime where Datetime &gt; '2015-01-01' and Category != 'NON-CRIMINAL'&quot;
+crime_locs = pd.read_sql_query(query, sf_conn)
+lonlat = [geom.Point(lon, lat) for lon, lat in zip(crime_locs.Lon, crime_locs.Lat)]
+crime_locs = gpd.GeoDataFrame(crime_locs, geometry = lonlat)
+```
+
+
+```python
+# looking at recent years, 2015 onwards
+query = &quot;&quot;&quot;
+select crime.PdDistrict, count(crime.IncidntNum) as '# of Crime Incidences 2015-2016' from crime 
+where crime.Category != 'NON-CRIMINAL' and crime.Datetime &gt; '2015-01-01'
+group by crime.PdDistrict
+order by count(crime.IncidntNum) desc
+&quot;&quot;&quot;
+pd.read_sql_query(query, sf_conn)
+```
+
+
+
+
+&lt;div&gt;
+&lt;table border=&quot;1&quot; class=&quot;dataframe&quot;&gt;
+  &lt;thead&gt;
+    &lt;tr style=&quot;text-align: right;&quot;&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;PdDistrict&lt;/th&gt;
+      &lt;th&gt;# of Crime Incidences 2015-2016&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;SOUTHERN&lt;/td&gt;
+      &lt;td&gt;54189&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;1&lt;/th&gt;
+      &lt;td&gt;NORTHERN&lt;/td&gt;
+      &lt;td&gt;38172&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;2&lt;/th&gt;
+      &lt;td&gt;MISSION&lt;/td&gt;
+      &lt;td&gt;35586&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;3&lt;/th&gt;
+      &lt;td&gt;CENTRAL&lt;/td&gt;
+      &lt;td&gt;33146&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;4&lt;/th&gt;
+      &lt;td&gt;BAYVIEW&lt;/td&gt;
+      &lt;td&gt;27623&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;5&lt;/th&gt;
+      &lt;td&gt;INGLESIDE&lt;/td&gt;
+      &lt;td&gt;23434&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;6&lt;/th&gt;
+      &lt;td&gt;TARAVAL&lt;/td&gt;
+      &lt;td&gt;21279&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;7&lt;/th&gt;
+      &lt;td&gt;TENDERLOIN&lt;/td&gt;
+      &lt;td&gt;18698&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;8&lt;/th&gt;
+      &lt;td&gt;PARK&lt;/td&gt;
+      &lt;td&gt;16253&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;9&lt;/th&gt;
+      &lt;td&gt;RICHMOND&lt;/td&gt;
+      &lt;td&gt;16194&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;10&lt;/th&gt;
+      &lt;td&gt;None&lt;/td&gt;
+      &lt;td&gt;1&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+
+
+
+
+```python
+base = new_df.plot(column='median_sqft', scheme='QUANTILES', legend = True, cmap = 'YlGnBu')
+
+#crime_locs.plot(ax = base, markersize = 5, alpha = 0.5, color = 'coral')
+
+plt.title(&quot;Home Prices Across SF&quot;)
+plt.ylabel(&quot;Latitude&quot;)
+plt.xlabel(&quot;Longitude&quot;)
+```
+
+
+
+
+    &lt;matplotlib.text.Text at 0x13757828&gt;
+
+
+
+
+![png](output_49_1.png)
+
+
+Since crime_locs, which stores all the points for crimes 2015-present, is over 28,000 rows, I was not able to plot them. Therefore, I just look at the counts of incidences divided by PD District and the median prices map.
+When looking at a map of PD Districts in SF (http://sanfranciscopolice.org/police-district-maps), Southern, Northern, and Mission are mostly in the north-east. This is also where prices are medium to high.
+&lt;br&gt;It might be because there are richer people in those areas, more crimes occur.</content><author><name>Cindy Lai</name></author><summary type="html">Assignment 6</summary></entry><entry><title type="html">Assignment 5</title><link href="http://localhost:4000/2017/02/25/a5/" rel="alternate" type="text/html" title="Assignment 5" /><published>2017-02-25T04:00:00-08:00</published><updated>2017-02-25T04:00:00-08:00</updated><id>http://localhost:4000/2017/02/25/a5</id><content type="html" xml:base="http://localhost:4000/2017/02/25/a5/"># Assignment 5
+
+In this assignment, you'll scrape text from [The California Aggie](https://theaggie.org/) and then analyze the text.
+
+The Aggie is organized by category into article lists. For example, there's a [Campus News](https://theaggie.org/campus/) list, [Arts &amp; Culture](https://theaggie.org/arts/) list, and [Sports](https://theaggie.org/sports/) list. Notice that each list has multiple pages, with a maximum of 15 articles per page.
+
+The goal of exercises 1.1 - 1.3 is to scrape articles from the Aggie for analysis in exercise 1.4.
+
+__Exercise 1.1.__ Write a function that extracts all of the links to articles in an Aggie article list. The function should:
+
+* Have a parameter `url` for the URL of the article list.
+
+* Have a parameter `page` for the number of pages to fetch links from. The default should be `1`.
+
+* Return a list of aricle URLs (each URL should be a string).
+
+Test your function on 2-3 different categories to make sure it works.
+
+Hints:
+
+* Be polite to The Aggie and save time by setting up [requests_cache](https://pypi.python.org/pypi/requests-cache) before you write your function.
+
+* Start by getting your function to work for just 1 page. Once that works, have your function call itself to get additional pages.
+
+* You can use [lxml.html](http://lxml.de/lxmlhtml.html) or [BeautifulSoup](https://www.crummy.com/software/BeautifulSoup/bs4/doc/) to scrape HTML. Choose one and use it throughout the entire assignment.
+
+
+```python
+import requests
+import fastcache
+```
+
+
+```python
+import lxml.html as lx
+import pandas as pd
+import numpy as np
+```
+
+
+```python
+urls = [&quot;https://theaggie.org/campus/&quot;, &quot;https://theaggie.org/arts/&quot;, &quot;https://theaggie.org/sports/&quot;]
+```
+
+
+```python
+def fetch_page(url, currPage = 1, mainPage = False):
+    '''
+    This gets the requests response from the base url and the current page number.
+    '''
+    if mainPage == True:
+        url = url + &quot;page/&quot; + str(currPage) + &quot;/&quot;
+        
+    response = requests.get(url)
+    response.raise_for_status()
+    return response
+```
+
+
+```python
+def html_parser(page, path):
+    '''
+    This takes a response page and searches for the content based on the provided xpath.
+    '''
+    html = lx.fromstring(page.text)
+    li = html.xpath(path)
+
+    return li
+```
+
+
+```python
+def get_article_list(url, numPage = 1):
+    
+    articleList = [] # what you'll be returning: a list of all the article urls within the pages
+    
+    currPage = 1
+    
+    while currPage &lt;= numPage:
+        page = fetch_page(url, currPage, mainPage = True)
+        currPage = currPage + 1
+        
+        li = html_parser(page, path = &quot;//h2[@class = 'entry-title']//a/@href&quot;)
+        
+        articleList.append(li)
+        
+    # flatten a list of lists
+    articleList = [url for sublist in articleList for url in sublist]
+    
+    return articleList
+```
+
+
+```python
+art_urls = get_article_list(urls[1], numPage = 2)
+```
+
+
+```python
+art_urls[0:5]
+```
+
+
+
+
+    ['https://theaggie.org/2017/02/23/sacramentos-artstreet-exhibit-showcases-diverse-artwork/',
+     'https://theaggie.org/2017/02/23/armadillo-kdvs-collaborate-to-host-vinyl-and-music-fair/',
+     'https://theaggie.org/2017/02/23/harlows-nightclub-presents-khalid/',
+     'https://theaggie.org/2017/02/21/late-night-eats-in-davis/',
+     'https://theaggie.org/2017/02/21/2017-oscar-nominations-and-predictions/']
+
+
+
+
+```python
+sports_urls = get_article_list(urls[2], numPage = 1)
+```
+
+
+```python
+sports_urls[0:5]
+```
+
+
+
+
+    ['https://theaggie.org/2017/02/24/uc-davis-back-on-track-with-win-over-matadors/',
+     'https://theaggie.org/2017/02/24/aggie-womens-basketball-team-says-neigh-to-mustangs/',
+     'https://theaggie.org/2017/02/23/the-amazeing-aggies/',
+     'https://theaggie.org/2017/02/23/uc-davis-womens-water-polo-dominates-aggie-shootout/',
+     'https://theaggie.org/2017/02/23/womens-gymnastics-take-two/']
+
+
+
+__Exercise 1.2.__ Write a function that extracts the title, text, and author of an Aggie article. The function should:
+
+* Have a parameter `url` for the URL of the article.
+
+* For the author, extract the &quot;Written By&quot; line that appears at the end of most articles. You don't have to extract the author's name from this line.
+
+* Return a dictionary with keys &quot;url&quot;, &quot;title&quot;, &quot;text&quot;, and &quot;author&quot;. The values for these should be the article url, title, text, and author, respectively.
+
+
+Hints:
+
+* The author line is always the last line of the last paragraph.
+
+*   Python 2 displays some Unicode characters as `\uXXXX`. For instance, `\u201c` is a left-facing quotation mark.
+    You can convert most of these to ASCII characters with the method call (on a string)
+    ```
+    .translate({ 0x2018:0x27, 0x2019:0x27, 0x201C:0x22, 0x201D:0x22, 0x2026:0x20 })
+    ```
+    If you're curious about these characters, you can look them up on [this page](http://unicode.org/cldr/utility/character.jsp), or read 
+    more about [what Unicode is](http://unicode.org/standard/WhatIsUnicode.html).
+
+
+```python
+def extract_essentials(articleUrl):
+    
+    essential_dict = {}
+    
+    essential_dict[&quot;url&quot;] = articleUrl
+    
+    page = fetch_page(articleUrl)
+    
+    titlePath = html_parser(page, &quot;//title&quot;)
+    rawTitle = [x.text_content() for x in titlePath]
+    title = rawTitle[0].split(&quot;|&quot;)[0].strip()
+    essential_dict[&quot;title&quot;] = title
+    
+    authorPath = html_parser(page, &quot;//p[contains(., 'Written by:')]&quot;)
+    rawAuthor =  [x.text_content() for x in authorPath]
+    
+    if rawAuthor != []:    
+        authorList = rawAuthor[0].split(&quot; &quot;)[2:-2]
+        author = &quot; &quot;.join(authorList)
+        essential_dict[&quot;author&quot;] = author
+    
+    else: # could not properly get author
+        essential_dict[&quot;author&quot;] = &quot;extracting error&quot;
+    
+    textPath = html_parser(page, &quot;//p&quot;)
+    rawText = [x.text_content() for x in textPath]
+    #twoParts = &quot; &quot;.join(rawText).split(&quot;\n&quot;)
+    #text = twoParts[0]
+    #print twoParts
+    text = &quot; &quot;.join(rawText).split(&quot;\n&quot;)[0]
+    essential_dict[&quot;text&quot;] = text
+
+    return essential_dict
+```
+
+
+```python
+extract_essentials(art_urls[0])
+```
+
+
+{'author': u'until this Saturday, Feb. 25 at 300 1st Avenue in Sacramento, CA, and it is free to the public. Check out M5Arts\u2019 website and the ArtStreet Facebook event page to find out more about upcoming events and artists before it\u2019s too late!\nWritten by: Pari Sagafi \u2014',
+     'text': u'Don\u2019t miss this free exhibit ending on Saturday, Feb. 25 Entering the partially-indoor, partially-outdoor world of Sacramento\u2019s ArtStreet exhibit, you are met with the largest wind chime you\u2019ve probably ever seen, and you get to touch beautifully framed moss and have a glimpse at several colorful murals. &lt;br&gt;...&lt;br&gt;
+     Saturday, Feb. 25 at 300 1st Avenue in Sacramento, CA, and it is free to the public. Check out M5Arts\u2019 website and the ArtStreet Facebook event page to find out more about upcoming events and artists before it\u2019s too late!',
+     'title': u'Sacramento\u2019s  \u201cArtStreet\u201d exhibit showcases diverse artwork',
+     'url': 'https://theaggie.org/2017/02/23/sacramentos-artstreet-exhibit-showcases-diverse-artwork/'}
+
+
+
+&lt;i&gt;Note: The 2nd to last sports url author does not work properly due to the apostrophe. Ask to see how to deal with that.&lt;/i&gt;
+
+__Exercise 1.3.__ Use your functions from exercises 1.1 and 1.2 to get a data frame of 60 [Campus News](https://theaggie.org/campus/) articles and a data frame of 60 [City News](https://theaggie.org/city/) articles. Add a column to each that indicates the category, then combine them into one big data frame.
+
+The &quot;text&quot; column of this data frame will be your corpus for natural language processing in exercise 1.4.
+
+
+```python
+city_60_urls = get_article_list(&quot;https://theaggie.org/city/&quot;, 4)
+```
+
+
+```python
+city_60_urls[0:5]
+```
+
+
+
+
+    ['https://theaggie.org/2017/02/23/davis-whole-foods-market-shuts-down/',
+     'https://theaggie.org/2017/02/23/protest-against-planned-parenthood-in-woodland-is-met-with-counter-protests/',
+     'https://theaggie.org/2017/02/23/daviss-historic-city-hall-building-to-be-put-up-for-sale/',
+     'https://theaggie.org/2017/02/21/davis-stands-with-muslim-residents/',
+     'https://theaggie.org/2017/02/20/city-of-davis-awarded-funds-for-new-recycling-bins/']
+
+
+
+
+```python
+campus_60_urls = get_article_list(urls[0], 4)
+```
+
+
+```python
+campus_dict = [extract_essentials(url) for url in campus_60_urls]
+```
+
+
+```python
+campus_df = pd.DataFrame(campus_dict)
+```
+
+
+```python
+campus_df[&quot;category&quot;] = np.repeat(&quot;Campus News&quot;, len(campus_df))
+```
+
+
+```python
+city_dict = [extract_essentials(url) for url in city_60_urls]
+city_df = pd.DataFrame(city_dict)
+city_df[&quot;category&quot;] = np.repeat(&quot;City News&quot;, len(city_df))
+```
+
+
+```python
+news_df = pd.concat([campus_df, city_df])
+news_df.head()
+```
+
+
+
+
+&lt;div&gt;
+&lt;table border=&quot;1&quot; class=&quot;dataframe&quot;&gt;
+  &lt;thead&gt;
+    &lt;tr style=&quot;text-align: right;&quot;&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;author&lt;/th&gt;
+      &lt;th&gt;text&lt;/th&gt;
+      &lt;th&gt;title&lt;/th&gt;
+      &lt;th&gt;url&lt;/th&gt;
+      &lt;th&gt;category&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;Alyssa Vandenberg&lt;/td&gt;
+      &lt;td&gt;Six senators, new executive team elected Curre...&lt;/td&gt;
+      &lt;td&gt;2017 Winter Quarter election results&lt;/td&gt;
+      &lt;td&gt;https://theaggie.org/2017/02/24/2017-winter-qu...&lt;/td&gt;
+      &lt;td&gt;Campus News&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;1&lt;/th&gt;
+      &lt;td&gt;Aaron Liss and Raul Castellanos&lt;/td&gt;
+      &lt;td&gt;Wells Fargo faces fraud, predatory lending cha...&lt;/td&gt;
+      &lt;td&gt;University of California, Davis City Council s...&lt;/td&gt;
+      &lt;td&gt;https://theaggie.org/2017/02/23/university-of-...&lt;/td&gt;
+      &lt;td&gt;Campus News&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;2&lt;/th&gt;
+      &lt;td&gt;Sadeghi’s speech resonated with her in the sen...&lt;/td&gt;
+      &lt;td&gt;Faculty, students recount personal tales of im...&lt;/td&gt;
+      &lt;td&gt;Academics unite in peaceful rally against immi...&lt;/td&gt;
+      &lt;td&gt;https://theaggie.org/2017/02/23/academics-unit...&lt;/td&gt;
+      &lt;td&gt;Campus News&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;3&lt;/th&gt;
+      &lt;td&gt;any remodel project on a building that is over...&lt;/td&gt;
+      &lt;td&gt;Opening date pushed back to May 1 Students hav...&lt;/td&gt;
+      &lt;td&gt;Memorial Union to reopen Spring Quarter&lt;/td&gt;
+      &lt;td&gt;https://theaggie.org/2017/02/23/memorial-union...&lt;/td&gt;
+      &lt;td&gt;Campus News&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;4&lt;/th&gt;
+      &lt;td&gt;Ivan Valenzuela&lt;/td&gt;
+      &lt;td&gt;Veto included revision abandoning creation of ...&lt;/td&gt;
+      &lt;td&gt;ASUCD President Alex Lee vetoes amendment for ...&lt;/td&gt;
+      &lt;td&gt;https://theaggie.org/2017/02/23/asucd-presiden...&lt;/td&gt;
+      &lt;td&gt;Campus News&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+
+
+
+__Exercise 1.4.__ Use the Aggie corpus to answer the following questions. Use plots to support your analysis.
+
+* What topics does the Aggie cover the most? Do city articles typically cover different topics than campus articles?
+
+* What are the titles of the top 3 pairs of most similar articles? Examine each pair of articles. What words do they have in common?
+
+* Do you think this corpus is representative of the Aggie? Why or why not? What kinds of inference can this corpus support? Explain your reasoning.
+
+Hints:
+
+*   The [nltk book](http://www.nltk.org/book/) and [scikit-learn documentation](http://scikit-learn.org/stable/modules/feature_extraction.html#text-feature-extraction) may be helpful here.
+
+*   You can determine whether city articles are &quot;near&quot; campus articles from the similarity matrix or with k-nearest neighbors.
+
+*   If you want, you can use the [wordcloud](http://amueller.github.io/word_cloud/) package to plot a word cloud. To install the package, run
+    ```
+    conda install -c https://conda.anaconda.org/amueller wordcloud
+    ```
+    in a terminal. Word clouds look nice and are easy to read, but are less precise than bar plots.
+
+#### I will be using the similarity matrix to find which articles are similar.
+
+
+```python
+import nltk
+from nltk import corpus
+from nltk.stem.porter import PorterStemmer
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.neighbors import NearestNeighbors
+from matplotlib import pyplot as plt
+plt.style.use('ggplot')
+%matplotlib inline
+```
+
+
+```python
+articleIDs = news_df.index
+
+stemmer = PorterStemmer().stem
+
+tokenize = nltk.word_tokenize
+
+def stem(tokens,stemmer = PorterStemmer().stem):
+    return [stemmer(w.lower()) for w in tokens] 
+
+import string
+
+def lemmatize(text):
+    &quot;&quot;&quot;
+    Extract simple lemmas based on tokenization and stemming
+    Input: string
+    Output: list of strings (lemmata)
+    &quot;&quot;&quot;
+    return stem(tokenize(text))
+```
+
+
+```python
+news_df.iloc[articleIDs[0]][&quot;text&quot;]
+```
+
+
+
+
+    u'Six senators, new executive team elected Current ASUCD Vice President Abhay Sandhu announced the ASUCD election results on Feb. 24 in the Memorial Union\u2019s Mee room. Six senators were elected: Sam Chiang, Michael Gofman, Khadeja Ibrahim, Rahi Suryawanshi, Marcos Rodriguez and Yajaira Ramirez Sigala. Chiang and Ibrahim ran on the BASED slate, while Suryawanshi, Rodriguez and Ramirez Sigala ran on the Bespoke slate. Gofman ran independently. The new ASUCD president and vice president will be Josh Dalavai and Adilla Jamaludin. Dalavai and Jamaludin ran on the BASED slate.  The results will also be posted online at elections.ucdavis.edu. Written by: Alyssa Vandenberg \xa0\u2014 campus@theaggie.org You must be logged in to post a comment.'
+
+
+
+
+```python
+textd = {} #dictionary from lemmata to document ids containing that lemma
+for article in articleIDs:
+    t = news_df.iloc[articleIDs[article]][&quot;text&quot;]
+    s = set(lemmatize(t)) - set(string.punctuation) # remove punctuation
+    try:
+        toks = toks | s
+    except NameError:
+        toks = s
+    for tok in s:
+        try:
+            textd[tok].append(article)
+        except KeyError:
+            textd[tok] = [article]
+
+    
+tokids = {} #dictionary of lemma to integer id for the lemma
+tok_list = list(toks)
+m = len(tok_list)
+for j in xrange(m):
+    tokids[tok_list[j]] = j
+```
+
+
+```python
+textd
+```
+
+
+```python
+plt.hist(idf_smooth.values(),bins=10)
+plt.title('IDF values for Words in Campus/City News Articles')
+```
+
+
+
+
+    &lt;matplotlib.text.Text at 0x133202b0&gt;
+
+
+
+
+![png](output_41_1.png)
+
+
+We can see that there are a lot of unique words (almost 1000) in the highest bin. This will be helpful when we find similarities between the articles.
+
+
+```python
+vectorizer = TfidfVectorizer(tokenizer=lemmatize,stop_words=&quot;english&quot;,smooth_idf=True,norm=None)
+
+tfs = vectorizer.fit_transform(news_df[&quot;text&quot;])
+```
+
+
+```python
+sim = tfs.dot(tfs.T)
+sim.mean()
+```
+
+
+
+
+    1955.8938020560031
+
+
+
+
+```python
+np.where(simArray &gt; 14000)
+```
+
+
+
+
+    (array([  1,  10,  12,  14,  14,  14,  16,  16,  16,  16,  28,  29,  31,
+             33,  34,  35,  35,  37,  39,  40,  41,  44,  47,  48,  49,  50,
+             52,  54,  55,  56,  56,  64,  66,  71,  76,  78,  79,  81,  85,
+             86,  87,  88,  90,  91,  95,  96,  97, 110, 112, 114, 115, 115], dtype=int64),
+     array([  1,  10,  12,  14,  16,  35,  14,  16,  56, 115,  28,  29,  31,
+             33,  34,  14,  35,  37,  39,  40,  41,  44,  47,  48,  49,  50,
+             52,  54,  55,  16,  56,  64,  66,  71,  76,  78,  79,  81,  85,
+             86,  87,  88,  90,  91,  95,  96,  97, 110, 112, 114,  16, 115], dtype=int64))
+
+
+
+Look for the corresponding index numbers from the two matrices and find pairs that are not identical (identical means they are similar to themselves, which is not useful to us).
+I got the number 14000 by trial and error, until I got enough unidentical pair numbers.
+
+
+```python
+sim[(14,16)]
+```
+
+
+
+
+    16406.60782035828
+
+
+
+
+```python
+sim[(14,35)]
+```
+
+
+
+
+    16296.809426808632
+
+
+
+
+```python
+sim[(16,56)]
+```
+
+
+
+
+    14122.902745998215
+
+
+
+
+```python
+sim[(16,115)]
+```
+
+
+
+
+    14632.464200002809
+
+
+
+The top 3 most similar article pairs from the similarity matrix are:
+* 14 / 16
+* 14 / 35
+* 16 / 115
+
+
+```python
+print &quot;16&quot;, news_df.iloc[16]['title'], &quot;\n&quot;, &quot;14&quot;, news_df.iloc[14]['title'], &quot;\n&quot;, &quot;35&quot;, news_df.iloc[35]['title'], &quot;\n&quot;, &quot;115&quot;, news_df.iloc[115]['title'],
+```
+
+    16 2017 ASUCD Winter Elections — Meet the Candidates 
+    14 UC Davis holds first mental health conference 
+    35 UC Davis to host first ever mental health conference 
+    115 Nov. 8 2016: An Election Day many may never forget
+    
+
+These articles seem somewhat related (14 and 35 is no surprise). I wonder if this is how close the articles will get in terms of similarity, or if it's because all the others are very diverse.
+
+
+```python
+plt.hist(simArray.ravel(),bins=30)
+plt.xlim(right=20000)
+plt.title('Similarity Values Distribution between Articles in The Aggie Corpus')
+```
+
+
+
+
+    &lt;matplotlib.text.Text at 0x14be3198&gt;
+
+
+
+
+![png](output_54_1.png)
+
+
+From this, we can see that very few article pairs exceed 10000. This could indicate that the articles in City News and Campus News are quite unique and don't cover many of the same topics.
+
+From this, I believe this corpus could be a good representation of The Aggie, if you are looking to see the types of articles it usually writes for Campus and City News. However, since these types of articles are very dependent on the time and season, you cannot expect the same articles in the summer, for example.
+
+
+```python
+labels2 = np.repeat(0, 60)
+labels2 = np.append(labels2, np.repeat(1,60))
+```
+
+
+```python
+k_max = 20
+nbrs = NearestNeighbors(n_neighbors=k_max).fit(tfs)
+err_list = []
+
+for k in xrange(1,k_max+1,2):
+    neighmat = nbrs.kneighbors_graph(n_neighbors=k)
+    pred_lab = (neighmat.dot(labels2) &gt; k/2.)*1 
+    err =  np.mean(pred_lab != labels2)
+    err_list.append(err)
+```
+
+
+```python
+plt.plot(range(1,k_max + 1,2),err_list)
+plt.xlabel('k')
+plt.ylabel('Error Rate')
+```
+
+
+
+
+    &lt;matplotlib.text.Text at 0x137a1a90&gt;
+
+
+
+
+![png](output_58_1.png)
+
+
+We can see that k = 1 is the best k value for classification. In the graph, we can see the error rate is somewhat high, especially k &gt;= 3. This can indicate that an article's neighbors are very divided between the two categories, and the line between the two categories is not very distinct.
+
+From this, we can see that Campus News and City News text content are somewhat similar.
+
+#### sites referenced:
+* http://stackoverflow.com/questions/952914/making-a-flat-list-out-of-list-of-lists-in-python
+* http://stackoverflow.com/questions/21455349/xpath-query-get-attribute-href-from-a-tag
+* https://www.w3schools.com/xml/xpath_syntax.asp
+* https://github.com/nick-ulle/nick-ulle.github.io/blob/master/teach/workshop.ipynb
+* http://pandas.pydata.org/pandas-docs/stable/merging.html
+* http://stackoverflow.com/questions/10337533/a-fast-way-to-find-the-largest-n-elements-in-an-numpy-array</content><author><name>Cindy Lai</name></author><summary type="html">Assignment 5</summary></entry><entry><title type="html">Assignment 4</title><link href="http://localhost:4000/2017/02/16/a4/" rel="alternate" type="text/html" title="Assignment 4" /><published>2017-02-16T04:00:00-08:00</published><updated>2017-02-16T04:00:00-08:00</updated><id>http://localhost:4000/2017/02/16/a4</id><content type="html" xml:base="http://localhost:4000/2017/02/16/a4/"># Assignment 4
+
+In this assignment, you'll combine the assignment 3 data set with nutrition data from the [USDA Food Composition Databases](https://ndb.nal.usda.gov/ndb/search/list). The CSV file `fresh.csv` contains the fresh fruits and vegetables data you extracted in assignment 3.
+
+The USDA Food Composition Databases have a [documented](https://ndb.nal.usda.gov/ndb/doc/index) web API that returns data in JSON format . You need a key in order to use the API. Only 1000 requests are allowed per hour, so it would be a good idea to use [caching][requests_cache].
+
+[Sign up for an API key here](https://api.data.gov/signup/). The key will work with any Data.gov API. You may need the key again later in the quarter, so make sure you save it.
+
+These modules may be useful:
+
+* [requests](http://docs.python-requests.org/en/master/user/quickstart/)
+* [requests_cache][]
+* [urlparse](https://docs.python.org/2/library/urlparse.html)
+* [pandas](http://pandas.pydata.org/pandas-docs/stable/)
+
+[requests_cache]: https://pypi.python.org/pypi/requests-cache
+
+
+__Exercise 1.1.__ Read the [search request documentation](https://ndb.nal.usda.gov/ndb/doc/apilist/API-SEARCH.md), then write a function called `ndb_search()` that makes a search request. The function should accept the search term as an argument. The function should return the search result items as a list (for 0 items, return an empty list).
+
+Note that the search url is: `https://api.nal.usda.gov/ndb/search`
+
+As an example, a search for `&quot;quail eggs&quot;` should return this list:
+
+```python
+[{u'ds': u'BL',
+  u'group': u'Branded Food Products Database',
+  u'name': u'CHAOKOH, QUAIL EGG IN BRINE, UPC: 044738074186',
+  u'ndbno': u'45094707',
+  u'offset': 0},
+ {u'ds': u'BL',
+  u'group': u'Branded Food Products Database',
+  u'name': u'L&amp;W, QUAIL EGGS, UPC: 024072000256',
+  u'ndbno': u'45094890',
+  u'offset': 1},
+ {u'ds': u'BL',
+  u'group': u'Branded Food Products Database',
+  u'name': u'BUDDHA, QUAIL EGGS IN BRINE, UPC: 761934535098',
+  u'ndbno': u'45099560',
+  u'offset': 2},
+ {u'ds': u'BL',
+  u'group': u'Branded Food Products Database',
+  u'name': u'GRAN SABANA, QUAIL EGGS, UPC: 819140010103',
+  u'ndbno': u'45169279',
+  u'offset': 3},
+ {u'ds': u'BL',
+  u'group': u'Branded Food Products Database',
+  u'name': u&quot;D'ARTAGNAN, QUAIL EGGS, UPC: 736622102630&quot;,
+  u'ndbno': u'45178254',
+  u'offset': 4},
+ {u'ds': u'SR',
+  u'group': u'Dairy and Egg Products',
+  u'name': u'Egg, quail, whole, fresh, raw',
+  u'ndbno': u'01140',
+  u'offset': 5}]
+```
+
+As usual, make sure you document and test your function.
+
+
+```python
+from urllib2 import Request, urlopen
+from urlparse import urlparse, urlunparse
+import requests, requests_cache
+import pandas as pd
+import json
+
+
+# my API key
+key = &quot;ULxnv6kWU0vTif6L3wHrB5MIkQKj0PrM3IfgfWbG&quot;
+```
+
+
+```python
+requests_cache.install_cache('food_cache')
+```
+
+
+    ---------------------------------------------------------------------------
+
+    NameError                                 Traceback (most recent call last)
+
+    &lt;ipython-input-10-1e21dcdbe5e7&gt; in &lt;module&gt;()
+    ----&gt; 1 requests_cache.install_cache('food_cache')
+    
+
+    NameError: name 'requests_cache' is not defined
+
+
+
+```python
+# generate the query request to search for results
+
+# Notes: The request will return a JSON object. Default sort = &quot;r&quot;, aka relevance
+# EXAMPLE URL: https://api.nal.usda.gov/ndb/search/?api_key=ULxnv6kWU0vTif6L3wHrB5MIkQKj0PrM3IfgfWbG&amp;format=json&amp;q=mushroom
+
+maxResults = 5
+
+def get_request(key, searchObject):
+    urlbase = &quot;https://api.nal.usda.gov/ndb/search/&quot;
+    params = {&quot;q&quot;:searchObject}
+    params.update({&quot;format&quot;:&quot;json&quot;})
+    params.update({&quot;api_key&quot;:key})
+    params.update({&quot;max&quot;:maxResults})
+    return requests.get(urlbase,params=params)
+get_request(key, &quot;mushroom&quot;)
+```
+
+
+
+
+    &lt;Response [200]&gt;
+
+
+
+
+```python
+def ndb_search(searchObject):
+    searchList = []
+    request = get_request(key, searchObject)
+    searchList = request.json()
+    return searchList[u'list'][u'item']
+
+ndb_search(&quot;mushroom&quot;)
+```
+
+
+
+
+    [{u'ds': u'BL',
+      u'group': u'Branded Food Products Database',
+      u'name': u'MUSHROOM GRAVY MADE WITH REAL MUSHROOMS, UPC: 011213168265',
+      u'ndbno': u'45077161',
+      u'offset': 0},
+     {u'ds': u'BL',
+      u'group': u'Branded Food Products Database',
+      u'name': u'BARTOLINI, EXTRA VIRGIN OLIVE OIL WITH MUSHROOM OIL, PORCINI MUSHROOM OIL, UPC: 657739001541',
+      u'ndbno': u'45168655',
+      u'offset': 1},
+     {u'ds': u'BL',
+      u'group': u'Branded Food Products Database',
+      u'name': u'MUSHROOM HOUSE, DRIED OYSTER MUSHROOMS, UPC: 084348369166',
+      u'ndbno': u'45184863',
+      u'offset': 2},
+     {u'ds': u'BL',
+      u'group': u'Branded Food Products Database',
+      u'name': u'MUSHROOM HOUSE, SHIITAKE DRIED MUSHROOMS, UPC: 084348374160',
+      u'ndbno': u'45184864',
+      u'offset': 3},
+     {u'ds': u'BL',
+      u'group': u'Branded Food Products Database',
+      u'name': u'MUSHROOM HOUSE, DRIED MUSHROOMS, UPC: 084348396162',
+      u'ndbno': u'45184865',
+      u'offset': 4}]
+
+
+
+__Exercise 1.2.__ Use your search function to get NDB numbers for the foods in the `fresh.csv` file. It's okay if you don't get an NDB number for every food, but try to come up with a strategy that gets most of them. Discuss your strategy in a short paragraph.
+
+Hints:
+
+* The foods are all raw and unbranded.
+* You can test search terms with the [online search page](https://ndb.nal.usda.gov/ndb/search/list).
+* You can convert the output of `ndb_search()` to a data frame with `pd.DataFrame()`.
+* The string methods for [Python](https://docs.python.org/2/library/stdtypes.html#string-methods) and [Pandas](http://pandas.pydata.org/pandas-docs/stable/text.html#method-summary) are useful here. It's okay if you use _simple_ regular expressions in the Pandas methods, although this exercise can be solved without them.
+* You can merge data frames that have a column in common with `pd.merge()`.
+
+Note: I use both &lt;b&gt;raw_fresh&lt;/b&gt; and &lt;b&gt;fresh&lt;/b&gt; throughout the code. This was because I later updated the rows of fresh to sort by food name alphabetically, so it messed up the ordering. I use raw_fresh for the old index order.
+
+
+```python
+raw_fresh = pd.read_csv(&quot;fresh.csv&quot;)
+fresh = raw_fresh.sort_values(by = &quot;food&quot;)
+fresh.head()
+```
+
+
+
+
+&lt;div&gt;
+&lt;table border=&quot;1&quot; class=&quot;dataframe&quot;&gt;
+  &lt;thead&gt;
+    &lt;tr style=&quot;text-align: right;&quot;&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;form&lt;/th&gt;
+      &lt;th&gt;price_per_lb&lt;/th&gt;
+      &lt;th&gt;yield&lt;/th&gt;
+      &lt;th&gt;lb_per_cup&lt;/th&gt;
+      &lt;th&gt;price_per_cup&lt;/th&gt;
+      &lt;th&gt;food&lt;/th&gt;
+      &lt;th&gt;type&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;th&gt;34&lt;/th&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;1.172248&lt;/td&gt;
+      &lt;td&gt;0.458554&lt;/td&gt;
+      &lt;td&gt;0.451948&lt;/td&gt;
+      &lt;td&gt;1.155360&lt;/td&gt;
+      &lt;td&gt;acorn_squash&lt;/td&gt;
+      &lt;td&gt;vegetables&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;15&lt;/th&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;1.567515&lt;/td&gt;
+      &lt;td&gt;0.900000&lt;/td&gt;
+      &lt;td&gt;0.242508&lt;/td&gt;
+      &lt;td&gt;0.422373&lt;/td&gt;
+      &lt;td&gt;apples&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;9&lt;/th&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;3.040072&lt;/td&gt;
+      &lt;td&gt;0.930000&lt;/td&gt;
+      &lt;td&gt;0.363763&lt;/td&gt;
+      &lt;td&gt;1.189102&lt;/td&gt;
+      &lt;td&gt;apricots&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;44&lt;/th&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;2.213050&lt;/td&gt;
+      &lt;td&gt;0.375309&lt;/td&gt;
+      &lt;td&gt;0.385809&lt;/td&gt;
+      &lt;td&gt;2.274967&lt;/td&gt;
+      &lt;td&gt;artichoke&lt;/td&gt;
+      &lt;td&gt;vegetables&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;24&lt;/th&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;3.213494&lt;/td&gt;
+      &lt;td&gt;0.493835&lt;/td&gt;
+      &lt;td&gt;0.396832&lt;/td&gt;
+      &lt;td&gt;2.582272&lt;/td&gt;
+      &lt;td&gt;asparagus&lt;/td&gt;
+      &lt;td&gt;vegetables&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+
+
+
+After searching on the online page, I noticed the majority have the word are formatted &quot;[fruit/vegetable], raw&quot;, so I will adjust my search to include that in the parameter. Entries with more than one word are separted by a &quot;, &quot;.
+
+In order to find the fresh fruit or vegetable you are looking for, I am modifying the search term to make it appear on top. Modifications include:
+&lt;ul&gt;
+  &lt;li&gt;Adding '&lt;b&gt;, raw&lt;/b&gt;' to the end of every entry&lt;/li&gt;
+  &lt;li&gt;Splitting multi-word entries with a comma&lt;/li&gt;
+  &lt;li&gt;Dealing with special cases&lt;/li&gt;
+&lt;/ul&gt;
+
+I wrote a function called &lt;b&gt;modify_search_term&lt;/b&gt; which will deal with multi-word entries by splitting them up and adding &quot;raw&quot; at the end of each term.
+&lt;b&gt;check_if_found&lt;/b&gt; makes sure that we get the item that we want. It goes to look into the food item's group to make sure it belongs to the &quot;Vegetables and Vegetable Products&quot; group or the &quot;Fruits and Fruit Juices&quot; group, and not some branded entry.
+
+&lt;b&gt;grab_correct_entry&lt;/b&gt; builds off check_if_found and goes through the search result list and returns the first entry which check_if_found is equal to &lt;b&gt;True&lt;/b&gt;.
+
+These functions culminate to &lt;b&gt;get_ndbno&lt;/b&gt;, which takes an entry from the fresh.csv and outputs its corresponding nbd number.
+
+The output is generated in the for loop, which creates a dictionary of foods and their ndb number. The for loop passes whenever get_ndb does not output a favorable result.
+
+
+```python
+def modify_search_term(food):
+    searchTerm = food
+    if &quot;_&quot; in food: # two+ word i.e. &quot;collard_greens&quot;
+        searchTerm = &quot;, &quot;.join(food.split('_'))
+    return searchTerm + &quot;, raw&quot;
+
+modify_search_term(&quot;lettuce_iceberg&quot;)
+```
+
+
+
+
+    'lettuce, iceberg, raw'
+
+
+
+Write something to deal with when the group isn't &lt;b&gt;Vegetables and Vegetable Products&lt;/b&gt; or &lt;b&gt;Fruits and Fruit Products&lt;/b&gt;. Raise a flag to indicate that the raw fruit wasn't found.
+
+
+```python
+def check_if_found(foodJson):
+    foodGroup = foodJson[u'group']
+    if (foodGroup == u'Vegetables and Vegetable Products') or (foodGroup == u'Fruits and Fruit Juices'):
+        return True
+    else:
+        return False
+```
+
+
+```python
+def grab_correct_entry(jsonList):
+    for result in jsonList:
+        if check_if_found(result):
+            return result
+    return None
+```
+
+
+```python
+# main function to get ndb number
+
+def get_ndbno(entry):
+    searchTerm = modify_search_term(entry)
+    searchResults = ndb_search(searchTerm)  
+    
+    foodEntry = grab_correct_entry(searchResults)
+    if foodEntry is None:
+        return float('NaN')
+    return foodEntry['ndbno']
+    
+lettuce = get_ndbno(&quot;lettuce_iceberg&quot;)
+```
+
+
+```python
+get_ndbno('watermelon')
+```
+
+
+
+
+    u'09326'
+
+
+
+
+```python
+# write a function to handle duplicates (cabbage and cucumbers)
+# input: takes the index for the row the food is located in raw_fresh
+# outputs new search term
+def look_for_details(ind):
+    freshForm = raw_fresh.loc[ind][0]
+    detail = freshForm.split(&quot; &quot;)[1:][0]
+    #return detail
+    if detail[len(detail) - 1] == &quot;1&quot;:
+        detail = detail[:(len(detail) - 1)]
+        
+    return fresh.loc[ind]['food'] + &quot;, &quot; + detail
+    
+look_for_details(26)
+```
+
+
+
+
+    'cucumbers, peeled'
+
+
+
+This function does not grab as many terms if I were to make it more specific. However, I kept it more general in case the data gets larger, so the look_for_details function would be able to grab more instances.
+
+This goes through all of the food in the fresh csv. It tries to get all the ndb numbers by using the function get_ndbno(). If a duplicate is found, it will use the function look_for_details() and modify the term that you will be searching for (cabbage -&gt; red cabbage). Assumes that the first instance of duplicate pair will be original (uses cabbage) and 2nd will be a variation (red cabbage).
+
+
+```python
+ndbNumbers = {}
+badRows = []
+for idx, food in enumerate(raw_fresh['food']):
+    if food in ndbNumbers.keys(): # duplicate
+        food = look_for_details(idx)
+    try:
+        ndbNumbers[food] = get_ndbno(food)
+    except:
+        badRows.append(idx)
+        pass
+```
+
+
+```python
+ndbNumbers # didn't get kiwi, and cucumbers is wrong (not the consumed with peel)
+```
+
+
+
+
+    {'acorn_squash': u'11482',
+     'apples': u'09003',
+     'apricots': u'09021',
+     'artichoke': u'11226',
+     'asparagus': u'11011',
+     'avocados': u'09038',
+     'bananas': u'09040',
+     'blackberries': u'09042',
+     'blueberries': u'09050',
+     'brussels_sprouts': u'11098',
+     'butternut_squash': u'11485',
+     'cabbage': u'11503',
+     'cabbage, red': u'11112',
+     'cantaloupe': u'09181',
+     'cherries': u'09276',
+     'collard_greens': u'11161',
+     'corn_sweet': u'11900',
+     'cucumbers': u'11206',
+     'cucumbers, peeled': u'11206',
+     'grapefruit': u'09117',
+     'grapes': u'09129',
+     'green_beans': u'11052',
+     'green_peppers': u'11333',
+     'honeydew': u'09184',
+     'kale': u'11233',
+     'lettuce_iceberg': u'11252',
+     'mangoes': u'09176',
+     'mustard_greens': u'11270',
+     'nectarines': u'09191',
+     'okra': u'11278',
+     'onions': u'11282',
+     'oranges': u'09201',
+     'papaya': u'09226',
+     'peaches': u'09236',
+     'pears': u'09252',
+     'pineapple': u'09266',
+     'plums': u'09279',
+     'pomegranate': u'09286',
+     'potatoes': u'11362',
+     'radish': u'11429',
+     'raspberries': u'09302',
+     'red_peppers': u'11821',
+     'strawberries': u'09316',
+     'summer_squash': u'11475',
+     'sweet_potatoes': u'11507',
+     'tangerines': u'09221',
+     'turnip_greens': u'11568',
+     'watermelon': u'09326'}
+
+
+
+
+```python
+ndb_df = pd.DataFrame(ndbNumbers.values(), index = ndbNumbers.keys(), columns = ['ndbNo'])
+ndb_df.head()
+```
+
+
+
+
+&lt;div&gt;
+&lt;table border=&quot;1&quot; class=&quot;dataframe&quot;&gt;
+  &lt;thead&gt;
+    &lt;tr style=&quot;text-align: right;&quot;&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;ndbNo&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;th&gt;red_peppers&lt;/th&gt;
+      &lt;td&gt;11821&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;bananas&lt;/th&gt;
+      &lt;td&gt;09040&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;lettuce_iceberg&lt;/th&gt;
+      &lt;td&gt;11252&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;radish&lt;/th&gt;
+      &lt;td&gt;11429&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;corn_sweet&lt;/th&gt;
+      &lt;td&gt;11900&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+
+
+
+
+```python
+ndb_df = ndb_df.sort_index()
+ndb_df.head()
+```
+
+
+
+
+&lt;div&gt;
+&lt;table border=&quot;1&quot; class=&quot;dataframe&quot;&gt;
+  &lt;thead&gt;
+    &lt;tr style=&quot;text-align: right;&quot;&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;ndbNo&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;th&gt;acorn_squash&lt;/th&gt;
+      &lt;td&gt;11482&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;apples&lt;/th&gt;
+      &lt;td&gt;09003&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;apricots&lt;/th&gt;
+      &lt;td&gt;09021&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;artichoke&lt;/th&gt;
+      &lt;td&gt;11226&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;asparagus&lt;/th&gt;
+      &lt;td&gt;11011&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+
+
+
+__Exercise 1.3.__ Read the [food reports V2 documentation](https://ndb.nal.usda.gov/ndb/doc/apilist/API-FOOD-REPORTV2.md), then write a function called `ndb_report()` that requests a _basic_ food report. The function should accept the NDB number as an argument and return the list of nutrients for the food.
+
+Note that the report url is: `https://api.nal.usda.gov/ndb/V2/reports`
+
+For example, for `&quot;09279&quot;` (raw plums) the first element of the returned list should be:
+
+```python
+{u'group': u'Proximates',
+ u'measures': [{u'eqv': 165.0,
+   u'eunit': u'g',
+   u'label': u'cup, sliced',
+   u'qty': 1.0,
+   u'value': u'143.93'},
+  {u'eqv': 66.0,
+   u'eunit': u'g',
+   u'label': u'fruit (2-1/8&quot; dia)',
+   u'qty': 1.0,
+   u'value': u'57.57'},
+  {u'eqv': 151.0,
+   u'eunit': u'g',
+   u'label': u'NLEA serving',
+   u'qty': 1.0,
+   u'value': u'131.72'}],
+ u'name': u'Water',
+ u'nutrient_id': u'255',
+ u'unit': u'g',
+ u'value': u'87.23'}
+```
+
+Be sure to document and test your function.
+
+
+```python
+def ndb_report(ndbNumber):
+    url = &quot;https://api.nal.usda.gov/ndb/V2/reports/&quot;
+    querystring = {&quot;ndbno&quot;:ndbNumber,&quot;api_key&quot;:&quot;ULxnv6kWU0vTif6L3wHrB5MIkQKj0PrM3IfgfWbG&quot;,&quot;format&quot;:&quot;json&quot;,&quot;type&quot;:&quot;b&quot;}
+    response = requests.get(url, params=querystring)
+    return response.json()[u'foods'][0]['food']['nutrients']
+```
+
+
+```python
+ndb_report(11112) # red cabbage
+```
+
+__Exercise 1.4.__ Which foods provide the best combination of price, yield, and nutrition? You can use kilocalories as a measure of &quot;nutrition&quot; here, but more a detailed analysis is better. Use plots to support your analysis.
+
+I based off what is &quot;healthy&quot; from Energy (kcal), Fiber, Sugars (negative health), and Vitamin C. I used the formula:
+&lt;b&gt;health = energy + fiber + vitaminC - sugars/2&lt;/b&gt;
+
+
+```python
+prices = fresh['price_per_lb'].reindex(fresh.index)
+priceList = prices.tolist()
+good_prices = [priceList[i] for i in xrange(len(priceList)) if i not in badRows] 
+# note! this does enter the wrong price for cucumbers, with peel
+
+ndb_df['price per lb'] = good_prices
+```
+
+
+```python
+types = fresh['type'].reindex(fresh.index)
+typeList = types.tolist()
+good_types = [typeList[i] for i in xrange(len(typeList)) if i not in badRows] 
+
+ndb_df['type'] = good_types
+```
+
+
+```python
+ndb_df[&quot;Nutrients&quot;] = [ndb_report(x) for x in ndb_df['ndbNo']]
+```
+
+
+```python
+nut_keys = [1, 6, 5, 14]
+            # energy, sugars, fiber, vitamin C
+
+
+# takes in a nutrition report and a nut_keys index, and returns the nutrient value
+def nutrient_info_extractor(food, idx):
+    return float(food[idx]['value'])
+
+ndb_df['energy'] = [nutrient_info_extractor(fd, nut_keys[0]) for fd in ndb_df[&quot;Nutrients&quot;]]
+ndb_df['sugar'] = [nutrient_info_extractor(fd, nut_keys[1]) for fd in ndb_df[&quot;Nutrients&quot;]]
+ndb_df['fiber'] = [nutrient_info_extractor(fd, nut_keys[2]) for fd in ndb_df[&quot;Nutrients&quot;]]
+ndb_df['vitamin C'] = [nutrient_info_extractor(fd, nut_keys[3]) for fd in ndb_df[&quot;Nutrients&quot;]]
+```
+
+&lt;h4&gt;Heath Index&lt;/h4&gt;
+Now I calculate the &quot;health index&quot;, which takes calories, fiber, vitamin C, and sugars into consideration. I chose these elements because these are some very common nutrients, known to the general public. People usually want fibers and high in vitamin C, and want to stay away from sugars (sugars is my penalty term).
+In addition, I consulted a couple of nutrition articles to see what they usually rate as a nutritional food. I wanted to keep the index simple, so I did not include many variables. &lt;p&gt;
+&lt;i&gt;Note:&lt;/i&gt;I divided sugars by 2, so it won't have such a dramatic impact on the health index.
+
+
+```python
+ndb_df['health index'] = ndb_df['energy'] + ndb_df['fiber'] + ndb_df['vitamin C'] - ndb_df['sugar']/2.0
+```
+
+
+```python
+ndb_df.head()
+```
+
+
+
+
+&lt;div&gt;
+&lt;table border=&quot;1&quot; class=&quot;dataframe&quot;&gt;
+  &lt;thead&gt;
+    &lt;tr style=&quot;text-align: right;&quot;&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;ndbNo&lt;/th&gt;
+      &lt;th&gt;price per lb&lt;/th&gt;
+      &lt;th&gt;Nutrients&lt;/th&gt;
+      &lt;th&gt;energy&lt;/th&gt;
+      &lt;th&gt;sugar&lt;/th&gt;
+      &lt;th&gt;fiber&lt;/th&gt;
+      &lt;th&gt;vitamin C&lt;/th&gt;
+      &lt;th&gt;health index&lt;/th&gt;
+      &lt;th&gt;type&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;th&gt;acorn_squash&lt;/th&gt;
+      &lt;td&gt;11482&lt;/td&gt;
+      &lt;td&gt;1.172248&lt;/td&gt;
+      &lt;td&gt;[{u'group': u'Proximates', u'name': u'Water', ...&lt;/td&gt;
+      &lt;td&gt;40.0&lt;/td&gt;
+      &lt;td&gt;33.00&lt;/td&gt;
+      &lt;td&gt;1.5&lt;/td&gt;
+      &lt;td&gt;0.14&lt;/td&gt;
+      &lt;td&gt;25.140&lt;/td&gt;
+      &lt;td&gt;vegetables&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;apples&lt;/th&gt;
+      &lt;td&gt;09003&lt;/td&gt;
+      &lt;td&gt;1.567515&lt;/td&gt;
+      &lt;td&gt;[{u'group': u'Proximates', u'name': u'Water', ...&lt;/td&gt;
+      &lt;td&gt;52.0&lt;/td&gt;
+      &lt;td&gt;10.39&lt;/td&gt;
+      &lt;td&gt;2.4&lt;/td&gt;
+      &lt;td&gt;4.60&lt;/td&gt;
+      &lt;td&gt;53.805&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;apricots&lt;/th&gt;
+      &lt;td&gt;09021&lt;/td&gt;
+      &lt;td&gt;3.040072&lt;/td&gt;
+      &lt;td&gt;[{u'group': u'Proximates', u'name': u'Water', ...&lt;/td&gt;
+      &lt;td&gt;48.0&lt;/td&gt;
+      &lt;td&gt;9.24&lt;/td&gt;
+      &lt;td&gt;2.0&lt;/td&gt;
+      &lt;td&gt;10.00&lt;/td&gt;
+      &lt;td&gt;55.380&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;artichoke&lt;/th&gt;
+      &lt;td&gt;11226&lt;/td&gt;
+      &lt;td&gt;2.213050&lt;/td&gt;
+      &lt;td&gt;[{u'group': u'Proximates', u'name': u'Water', ...&lt;/td&gt;
+      &lt;td&gt;73.0&lt;/td&gt;
+      &lt;td&gt;9.60&lt;/td&gt;
+      &lt;td&gt;1.6&lt;/td&gt;
+      &lt;td&gt;4.00&lt;/td&gt;
+      &lt;td&gt;73.800&lt;/td&gt;
+      &lt;td&gt;vegetables&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;asparagus&lt;/th&gt;
+      &lt;td&gt;11011&lt;/td&gt;
+      &lt;td&gt;3.213494&lt;/td&gt;
+      &lt;td&gt;[{u'group': u'Proximates', u'name': u'Water', ...&lt;/td&gt;
+      &lt;td&gt;20.0&lt;/td&gt;
+      &lt;td&gt;1.88&lt;/td&gt;
+      &lt;td&gt;2.1&lt;/td&gt;
+      &lt;td&gt;5.60&lt;/td&gt;
+      &lt;td&gt;26.760&lt;/td&gt;
+      &lt;td&gt;vegetables&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+
+
+
+
+```python
+import seaborn as sns
+import matplotlib
+import matplotlib.pyplot as plt
+
+chart1 = sns.regplot(x='price per lb', y='health index', data=ndb_df, ci=None, fit_reg = False, scatter_kws={'s':30})
+
+sns.plt.title('Health Index (kcal, sugars, Vitamin C, fiber) vs. Price')
+
+for label, x, y in zip(ndb_df.index, ndb_df['price per lb'], ndb_df['health index']):
+    plt.annotate(
+        label,
+        xy=(x, y), ha='center', va='bottom',
+        bbox=dict(boxstyle='round,pad=0.1', fc='white', alpha=0.5))
+    
+plt.show()
+# plotting price vs. health index
+```
+
+
+![png](output_38_0.png)
+
+
+If we base value off of price and what is considered 'nutritious' (health index), then according to the plot above, we should look at the foods in the &lt;b&gt;top left&lt;/b&gt; region. We can see
+* avocados
+* kale
+* red peppers
+* brussels spouts
+
+in the top rankings.
+Some other interesting foods to point out are &lt;b&gt;raspberries&lt;/b&gt;, which stand out as a very expensive food with mediocre nutritional value. The berries in general are on the right, with mediocre health indices. &lt;b&gt;Green Cabbage&lt;/b&gt; &lt;i&gt;(labled as cabbage in the graph)&lt;/i&gt; is rather cheap, but surprisingly not that healthy (with a negative index).
+
+If you generally care more for price, you should look at the left side. &lt;b&gt;Green peppers&lt;/b&gt;, &lt;b&gt;pineapples&lt;/b&gt;, &lt;b&gt;sweet potatoes&lt;/b&gt; are some cheap, high in nutrient foods.
+
+
+```python
+chart2 = sns.regplot(x='price per lb', y='energy', data=ndb_df, ci=None, fit_reg = False, scatter_kws={'s':30})
+sns.plt.title('Energy (kcal) vs. Price')
+
+for label, x, y in zip(ndb_df.index, ndb_df['price per lb'], ndb_df['energy']):
+    plt.annotate(
+        label,
+        xy=(x, y), ha='center', va='bottom',
+        bbox=dict(boxstyle='round,pad=0.1', fc='white', alpha=0.5))
+plt.show()
+```
+
+
+![png](output_40_0.png)
+
+
+When we take a simpler approach and simply base nutrition off of Energy (kcal), then you can see that &lt;b&gt;avocados&lt;/b&gt; definitely takes the lead.
+
+
+```python
+chart3 = sns.FacetGrid(ndb_df, hue = &quot;type&quot;, size = 3)
+chart3.map(plt.scatter, &quot;price per lb&quot;, &quot;energy&quot;).add_legend()
+sns.plt.title('Energy (kcal) vs. Price')
+
+plt.show()
+```
+
+
+![png](output_42_0.png)
+
+
+There is not really a differennce between fruits and vegetables for calories.
+
+
+```python
+sns.boxplot(&quot;health index&quot;, &quot;type&quot;, data = ndb_df)
+
+sns.plt.title('Distribution of Health, Vegetables vs. Fruit')
+plt.show()
+```
+
+
+![png](output_44_0.png)
+
+
+Fruits have a more limited range of health, but have a higher average health index than vegetables.
+
+Sites used: 
+* http://stackoverflow.com/questions/5188792/how-to-check-a-string-for-specific-characters
+* http://www.pythonforbeginners.com/dictionary/python-split
+* http://stackoverflow.com/questions/5438745/python-nan-and-inf-values
+* http://stackoverflow.com/questions/8312829/how-to-remove-item-from-a-python-list-if-a-condition-is-true
+* http://pandas.pydata.org/pandas-docs/stable/generated/pandas.DataFrame.sort_index.html
+* http://stackoverflow.com/questions/30009948/how-to-reorder-indexed-rows-based-on-a-list-in-pandas-data-frame
+* http://stackoverflow.com/questions/5147112/matplotlib-how-to-put-individual-tags-for-a-scatter-plot</content><author><name>Cindy Lai</name></author><summary type="html">Assignment 4</summary></entry><entry><title type="html">Assignment 3</title><link href="http://localhost:4000/2017/02/05/a3/" rel="alternate" type="text/html" title="Assignment 3" /><published>2017-02-05T04:00:00-08:00</published><updated>2017-02-05T04:00:00-08:00</updated><id>http://localhost:4000/2017/02/05/a3</id><content type="html" xml:base="http://localhost:4000/2017/02/05/a3/"># Assignment 3
+
+The US Department of Agriculture publishes price estimates for fruits and vegetables [online](https://www.ers.usda.gov/data-products/fruit-and-vegetable-prices/fruit-and-vegetable-prices/). The most recent estimates are based on a 2013 survey of US retail stores.
+
+The estimates are provided as a collection of MS Excel files, with one file per fruit or vegetable. The `assignment3_data.zip` file contains the fruit and vegetable files in the directories `fruit` and `vegetables`, respectively.
+
+__Exercise 1.1.__ Use pandas to extract the &quot;Fresh&quot; row(s) from the &lt;strong style=&quot;color:#B0B&quot;&gt;fruit&lt;/strong&gt; Excel files. Combine the data into a single data frame. Your data frame should look something like this:
+
+type       | food       | form   | price_per_lb | yield | lb_per_cup | price_per_cup
+---------- | ---------- | ------ | ------------ | ----- | ---------- | -------------
+fruit      | watermelon | Fresh1 | 0.333412     | 0.52  | 0.330693   | 0.212033
+fruit      | cantaloupe | Fresh1 | 0.535874     | 0.51  | 0.374786   | 0.3938
+vegetables | onions     | Fresh1 | 1.03811      | 0.9   | 0.35274    | 0.406868
+...        |            |        |              |       |            |
+
+
+It's okay if the rows and columns of your data frame are in a different order. These modules are especially relevant:
+
+* [`str` methods](https://docs.python.org/2/library/stdtypes.html#string-methods)
+* [`os`](https://docs.python.org/2/library/os.html)
+* [`os.path`](https://docs.python.org/2/library/os.path.html)
+* [pandas](http://pandas.pydata.org/pandas-docs/stable/): `read_excel()`, `concat()`, `.fillna()`, `.str`, plotting methods
+
+Ask questions and search the documentation/web to find the functions you need.
+
+
+I set the path to the fruit directory and use a list comprehension to get fruit names.
+
+
+```python
+import pandas as pd
+import os
+from os import listdir
+from os.path import isfile, join
+
+fruit_path = &quot;data/fruit/&quot;
+
+num_files = sum(os.path.isfile(os.path.join(fruit_path, f)) for f in os.listdir(fruit_path))
+
+onlyfiles = [f.split('.xlsx', 1)[0] for f in listdir(fruit_path) if isfile(join(fruit_path, f))]
+
+col = [&quot;type&quot;, &quot;food&quot;, &quot;form&quot;, &quot;price_per_lb&quot;, &quot;yield_v&quot;, &quot;lb_per_cup&quot;, &quot;price_per_cup&quot;]
+
+df = pd.DataFrame()
+
+onlyfiles[1]
+```
+
+
+
+
+    'apricots'
+
+
+
+This is the extract function which will read in a fruit (input will be from onlyfiles), and extract specified values. It returns a dictionary.
+
+
+```python
+def extract(fruit):
+    bkb = pd.read_excel(fruit_path + fruit+&quot;.xlsx&quot;, header= None, skiprows = [0,1,2])
+    fresh_row = bkb.iloc[0]
+    price_per_lb = fresh_row[1]
+    yield_v = fresh_row[3]
+    lb_per_cup = fresh_row[4]
+    price_per_cup = fresh_row[6]
+    lout = [&quot;fruit&quot;, fruit, &quot;Fresh1&quot; , price_per_lb, yield_v, lb_per_cup, price_per_cup]
+
+    dout = {&quot;type&quot; : [&quot;fruit&quot;], &quot;food&quot; : [fruit], &quot;form&quot;: [&quot;Fresh1&quot;], &quot;price_per_lb&quot; :[price_per_lb] , &quot;yield_v&quot;:[yield_v], &quot;lb_per_cup&quot;:[lb_per_cup], &quot;price_per_cup&quot;:[price_per_cup]}
+
+    return dout
+
+extract(onlyfiles[1])
+```
+
+
+
+
+    {'food': ['apricots'],
+     'form': ['Fresh1'],
+     'lb_per_cup': [0.363762732605048],
+     'price_per_cup': [1.1891020280290363],
+     'price_per_lb': [3.040071967096438],
+     'type': ['fruit'],
+     'yield_v': [0.93]}
+
+
+
+The getFruit function will get all the fruits in the fruit folder and create a data frame out of all the entries.
+
+
+```python
+def getFruit(fruitList):
+    df2 = pd.DataFrame()
+    l = []
+    for f in fruitList:
+        if '$' not in f:
+            d = extract(f)
+            new_df = pd.DataFrame.from_dict(d)
+            l.append(new_df)
+    df2 = pd.concat(l, axis = 0)
+    return df2
+
+fruit_df = getFruit(onlyfiles)
+fruit_df
+```
+
+
+
+
+&lt;div&gt;
+&lt;table border=&quot;1&quot; class=&quot;dataframe&quot;&gt;
+  &lt;thead&gt;
+    &lt;tr style=&quot;text-align: right;&quot;&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;food&lt;/th&gt;
+      &lt;th&gt;form&lt;/th&gt;
+      &lt;th&gt;lb_per_cup&lt;/th&gt;
+      &lt;th&gt;price_per_cup&lt;/th&gt;
+      &lt;th&gt;price_per_lb&lt;/th&gt;
+      &lt;th&gt;type&lt;/th&gt;
+      &lt;th&gt;yield_v&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;apples&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.242508&lt;/td&gt;
+      &lt;td&gt;0.422373&lt;/td&gt;
+      &lt;td&gt;1.567515&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.90&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;apricots&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.363763&lt;/td&gt;
+      &lt;td&gt;1.189102&lt;/td&gt;
+      &lt;td&gt;3.040072&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.93&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;bananas&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.330693&lt;/td&gt;
+      &lt;td&gt;0.292965&lt;/td&gt;
+      &lt;td&gt;0.566983&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.64&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;berries_mixed&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.330693&lt;/td&gt;
+      &lt;td&gt;1.127735&lt;/td&gt;
+      &lt;td&gt;3.410215&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;1.00&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;blackberries&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.319670&lt;/td&gt;
+      &lt;td&gt;1.922919&lt;/td&gt;
+      &lt;td&gt;5.774708&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.96&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;blueberries&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.319670&lt;/td&gt;
+      &lt;td&gt;1.593177&lt;/td&gt;
+      &lt;td&gt;4.734622&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.95&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;cantaloupe&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.374786&lt;/td&gt;
+      &lt;td&gt;0.393800&lt;/td&gt;
+      &lt;td&gt;0.535874&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.51&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;cherries&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.341717&lt;/td&gt;
+      &lt;td&gt;1.334548&lt;/td&gt;
+      &lt;td&gt;3.592990&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.92&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;cranberries&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.123163&lt;/td&gt;
+      &lt;td&gt;0.589551&lt;/td&gt;
+      &lt;td&gt;4.786741&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;1.00&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;dates&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.165347&lt;/td&gt;
+      &lt;td&gt;0.792234&lt;/td&gt;
+      &lt;td&gt;4.791351&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;1.00&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;figs&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.165347&lt;/td&gt;
+      &lt;td&gt;0.990068&lt;/td&gt;
+      &lt;td&gt;5.748318&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.96&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;fruit_cocktail&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;NaN&lt;/td&gt;
+      &lt;td&gt;NaN&lt;/td&gt;
+      &lt;td&gt;NaN&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;NaN&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;grapefruit&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.462971&lt;/td&gt;
+      &lt;td&gt;0.848278&lt;/td&gt;
+      &lt;td&gt;0.897802&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.49&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;grapes&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.330693&lt;/td&gt;
+      &lt;td&gt;0.721266&lt;/td&gt;
+      &lt;td&gt;2.093827&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.96&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;honeydew&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.374786&lt;/td&gt;
+      &lt;td&gt;0.649077&lt;/td&gt;
+      &lt;td&gt;0.796656&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.46&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;kiwi&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.385809&lt;/td&gt;
+      &lt;td&gt;1.037970&lt;/td&gt;
+      &lt;td&gt;2.044683&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.76&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;mangoes&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.363763&lt;/td&gt;
+      &lt;td&gt;0.705783&lt;/td&gt;
+      &lt;td&gt;1.377563&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.71&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;nectarines&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.319670&lt;/td&gt;
+      &lt;td&gt;0.618667&lt;/td&gt;
+      &lt;td&gt;1.761148&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.91&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;oranges&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.407855&lt;/td&gt;
+      &lt;td&gt;0.578357&lt;/td&gt;
+      &lt;td&gt;1.035173&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.73&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;papaya&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.308647&lt;/td&gt;
+      &lt;td&gt;0.646174&lt;/td&gt;
+      &lt;td&gt;1.298012&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.62&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;peaches&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.341717&lt;/td&gt;
+      &lt;td&gt;0.566390&lt;/td&gt;
+      &lt;td&gt;1.591187&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.96&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;pears&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.363763&lt;/td&gt;
+      &lt;td&gt;0.590740&lt;/td&gt;
+      &lt;td&gt;1.461575&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.90&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;pineapple&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.363763&lt;/td&gt;
+      &lt;td&gt;0.447686&lt;/td&gt;
+      &lt;td&gt;0.627662&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.51&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;plums&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.363763&lt;/td&gt;
+      &lt;td&gt;0.707176&lt;/td&gt;
+      &lt;td&gt;1.827416&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.94&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;pomegranate&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.341717&lt;/td&gt;
+      &lt;td&gt;1.326342&lt;/td&gt;
+      &lt;td&gt;2.173590&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.56&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;raspberries&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.319670&lt;/td&gt;
+      &lt;td&gt;2.322874&lt;/td&gt;
+      &lt;td&gt;6.975811&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.96&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;strawberries&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.319670&lt;/td&gt;
+      &lt;td&gt;0.802171&lt;/td&gt;
+      &lt;td&gt;2.358808&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.94&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;tangerines&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.407855&lt;/td&gt;
+      &lt;td&gt;0.759471&lt;/td&gt;
+      &lt;td&gt;1.377962&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.74&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;watermelon&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.330693&lt;/td&gt;
+      &lt;td&gt;0.212033&lt;/td&gt;
+      &lt;td&gt;0.333412&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.52&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+
+
+
+__Exercise 1.2.__ Reuse your code from exercise 1.1 to extract the &quot;Fresh&quot; row(s) from the &lt;strong style=&quot;color:#B0B&quot;&gt;vegetable&lt;/strong&gt; Excel files.
+
+Does your code produce the correct prices for tomatoes? If not, why not? Do any other files have the same problem as the tomatoes file?
+
+You don't need to extract the prices for these problem files. However, make sure the prices are extracted for files like asparagus that don't have this problem.
+
+Using the same code for fruit, I simply change the path to vegetables.
+
+
+```python
+vegetable_path = &quot;data/vegetables/&quot;
+
+onlyfiles = [f.split('.xlsx', 1)[0] for f in listdir(vegetable_path) if isfile(join(vegetable_path, f))]
+
+
+def extract(vegetable):
+    bkb = pd.read_excel(vegetable_path + vegetable+&quot;.xlsx&quot;, header= None, skiprows = [0,1,2])
+    fresh_row = bkb.iloc[0]
+    price_per_lb = fresh_row[1]
+    yield_v = fresh_row[3]
+    lb_per_cup = fresh_row[4]
+    price_per_cup = fresh_row[6]
+
+    dout = {&quot;type&quot; : [&quot;vegetable&quot;], &quot;food&quot; : [vegetable], &quot;form&quot;: [&quot;Fresh1&quot;], &quot;price_per_lb&quot; :[price_per_lb] , &quot;yield_v&quot;:[yield_v], &quot;lb_per_cup&quot;:[lb_per_cup], &quot;price_per_cup&quot;:[price_per_cup]}
+
+    '''
+    vegetableSeries = pd.Series(data=[&quot;vegetable&quot;, vegetable, &quot;Fresh1&quot;, price_per_lb, yield_v, lb_per_cup, price_per_cup], name = vegetable)
+    return vegetableSeries
+    '''
+    return dout
+```
+
+
+```python
+extract(onlyfiles[1])
+```
+
+
+
+
+    {'food': ['artichoke'],
+     'form': ['Fresh1'],
+     'lb_per_cup': [0.38580895882353577],
+     'price_per_cup': [2.2749668026387808],
+     'price_per_lb': [2.2130504792860322],
+     'type': ['vegetable'],
+     'yield_v': [0.37530864197530867]}
+
+
+
+
+```python
+def getVegetable(vegetableList):
+    df2 = pd.DataFrame()
+    l = []
+    for f in vegetableList:
+        if '$' not in f:
+            d = extract(f)
+            new_df = pd.DataFrame.from_dict(d)
+            l.append(new_df)
+    df2 = pd.concat(l, axis = 0)
+    return df2
+
+vegetable_df = getVegetable(onlyfiles)
+vegetable_df
+```
+
+
+
+
+&lt;div&gt;
+&lt;table border=&quot;1&quot; class=&quot;dataframe&quot;&gt;
+  &lt;thead&gt;
+    &lt;tr style=&quot;text-align: right;&quot;&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;food&lt;/th&gt;
+      &lt;th&gt;form&lt;/th&gt;
+      &lt;th&gt;lb_per_cup&lt;/th&gt;
+      &lt;th&gt;price_per_cup&lt;/th&gt;
+      &lt;th&gt;price_per_lb&lt;/th&gt;
+      &lt;th&gt;type&lt;/th&gt;
+      &lt;th&gt;yield_v&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;acorn_squash&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.451948&lt;/td&gt;
+      &lt;td&gt;1.155360&lt;/td&gt;
+      &lt;td&gt;1.17225&lt;/td&gt;
+      &lt;td&gt;vegetable&lt;/td&gt;
+      &lt;td&gt;0.458554&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;artichoke&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.385809&lt;/td&gt;
+      &lt;td&gt;2.274967&lt;/td&gt;
+      &lt;td&gt;2.21305&lt;/td&gt;
+      &lt;td&gt;vegetable&lt;/td&gt;
+      &lt;td&gt;0.375309&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;asparagus&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.396832&lt;/td&gt;
+      &lt;td&gt;2.582272&lt;/td&gt;
+      &lt;td&gt;3.21349&lt;/td&gt;
+      &lt;td&gt;vegetable&lt;/td&gt;
+      &lt;td&gt;0.493835&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;avocados&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.31967&lt;/td&gt;
+      &lt;td&gt;0.964886&lt;/td&gt;
+      &lt;td&gt;2.23587&lt;/td&gt;
+      &lt;td&gt;vegetable&lt;/td&gt;
+      &lt;td&gt;0.740753&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;beets&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.374786&lt;/td&gt;
+      &lt;td&gt;0.586555&lt;/td&gt;
+      &lt;td&gt;1.01728&lt;/td&gt;
+      &lt;td&gt;vegetable&lt;/td&gt;
+      &lt;td&gt;0.65&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;blackeye_peas&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.374786&lt;/td&gt;
+      &lt;td&gt;0.524954&lt;/td&gt;
+      &lt;td&gt;0.910441&lt;/td&gt;
+      &lt;td&gt;vegetable&lt;/td&gt;
+      &lt;td&gt;0.65&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;black_beans&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.385809&lt;/td&gt;
+      &lt;td&gt;0.582025&lt;/td&gt;
+      &lt;td&gt;0.98058&lt;/td&gt;
+      &lt;td&gt;vegetable&lt;/td&gt;
+      &lt;td&gt;0.65&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;broccoli&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;&lt;/td&gt;
+      &lt;td&gt;NaN&lt;/td&gt;
+      &lt;td&gt;&lt;/td&gt;
+      &lt;td&gt;vegetable&lt;/td&gt;
+      &lt;td&gt;&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;brussels_sprouts&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.341717&lt;/td&gt;
+      &lt;td&gt;0.890898&lt;/td&gt;
+      &lt;td&gt;2.76355&lt;/td&gt;
+      &lt;td&gt;vegetable&lt;/td&gt;
+      &lt;td&gt;1.06&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;butternut_squash&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.451948&lt;/td&gt;
+      &lt;td&gt;0.787893&lt;/td&gt;
+      &lt;td&gt;1.24474&lt;/td&gt;
+      &lt;td&gt;vegetable&lt;/td&gt;
+      &lt;td&gt;0.714&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;cabbage&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.330693&lt;/td&gt;
+      &lt;td&gt;0.245944&lt;/td&gt;
+      &lt;td&gt;0.579208&lt;/td&gt;
+      &lt;td&gt;vegetable&lt;/td&gt;
+      &lt;td&gt;0.778797&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;carrots&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;NaN&lt;/td&gt;
+      &lt;td&gt;NaN&lt;/td&gt;
+      &lt;td&gt;NaN&lt;/td&gt;
+      &lt;td&gt;vegetable&lt;/td&gt;
+      &lt;td&gt;NaN&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;cauliflower&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;&lt;/td&gt;
+      &lt;td&gt;NaN&lt;/td&gt;
+      &lt;td&gt;&lt;/td&gt;
+      &lt;td&gt;vegetable&lt;/td&gt;
+      &lt;td&gt;&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;celery&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;NaN&lt;/td&gt;
+      &lt;td&gt;NaN&lt;/td&gt;
+      &lt;td&gt;NaN&lt;/td&gt;
+      &lt;td&gt;vegetable&lt;/td&gt;
+      &lt;td&gt;NaN&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;collard_greens&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.286601&lt;/td&gt;
+      &lt;td&gt;0.650001&lt;/td&gt;
+      &lt;td&gt;2.63084&lt;/td&gt;
+      &lt;td&gt;vegetable&lt;/td&gt;
+      &lt;td&gt;1.16&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;corn_sweet&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.363763&lt;/td&gt;
+      &lt;td&gt;1.812497&lt;/td&gt;
+      &lt;td&gt;2.69062&lt;/td&gt;
+      &lt;td&gt;vegetable&lt;/td&gt;
+      &lt;td&gt;0.54&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;cucumbers&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.264555&lt;/td&gt;
+      &lt;td&gt;0.353448&lt;/td&gt;
+      &lt;td&gt;1.29593&lt;/td&gt;
+      &lt;td&gt;vegetable&lt;/td&gt;
+      &lt;td&gt;0.97&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;great_northern_beans&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.385809&lt;/td&gt;
+      &lt;td&gt;0.548392&lt;/td&gt;
+      &lt;td&gt;0.923916&lt;/td&gt;
+      &lt;td&gt;vegetable&lt;/td&gt;
+      &lt;td&gt;0.65&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;green_beans&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.275578&lt;/td&gt;
+      &lt;td&gt;0.696606&lt;/td&gt;
+      &lt;td&gt;2.13997&lt;/td&gt;
+      &lt;td&gt;vegetable&lt;/td&gt;
+      &lt;td&gt;0.846575&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;green_peas&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.35274&lt;/td&gt;
+      &lt;td&gt;0.549769&lt;/td&gt;
+      &lt;td&gt;1.01307&lt;/td&gt;
+      &lt;td&gt;vegetable&lt;/td&gt;
+      &lt;td&gt;0.65&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;green_peppers&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.264555&lt;/td&gt;
+      &lt;td&gt;0.455022&lt;/td&gt;
+      &lt;td&gt;1.41036&lt;/td&gt;
+      &lt;td&gt;vegetable&lt;/td&gt;
+      &lt;td&gt;0.82&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;kale&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.286601&lt;/td&gt;
+      &lt;td&gt;0.766262&lt;/td&gt;
+      &lt;td&gt;2.8073&lt;/td&gt;
+      &lt;td&gt;vegetable&lt;/td&gt;
+      &lt;td&gt;1.05&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;kidney_beans&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.385809&lt;/td&gt;
+      &lt;td&gt;0.535194&lt;/td&gt;
+      &lt;td&gt;0.90168&lt;/td&gt;
+      &lt;td&gt;vegetable&lt;/td&gt;
+      &lt;td&gt;0.65&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;lentils&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.385809&lt;/td&gt;
+      &lt;td&gt;0.196738&lt;/td&gt;
+      &lt;td&gt;1.38504&lt;/td&gt;
+      &lt;td&gt;vegetable&lt;/td&gt;
+      &lt;td&gt;2.7161&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;lettuce_iceberg&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.242508&lt;/td&gt;
+      &lt;td&gt;0.309655&lt;/td&gt;
+      &lt;td&gt;1.21304&lt;/td&gt;
+      &lt;td&gt;vegetable&lt;/td&gt;
+      &lt;td&gt;0.95&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;lettuce_romaine&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;&lt;/td&gt;
+      &lt;td&gt;NaN&lt;/td&gt;
+      &lt;td&gt;&lt;/td&gt;
+      &lt;td&gt;vegetable&lt;/td&gt;
+      &lt;td&gt;NaN&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;lima_beans&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.374786&lt;/td&gt;
+      &lt;td&gt;0.797757&lt;/td&gt;
+      &lt;td&gt;1.38357&lt;/td&gt;
+      &lt;td&gt;vegetable&lt;/td&gt;
+      &lt;td&gt;0.65&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;mixed_vegetables&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;&lt;/td&gt;
+      &lt;td&gt;NaN&lt;/td&gt;
+      &lt;td&gt;&lt;/td&gt;
+      &lt;td&gt;vegetable&lt;/td&gt;
+      &lt;td&gt;&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;mushrooms&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;NaN&lt;/td&gt;
+      &lt;td&gt;NaN&lt;/td&gt;
+      &lt;td&gt;NaN&lt;/td&gt;
+      &lt;td&gt;vegetable&lt;/td&gt;
+      &lt;td&gt;NaN&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;mustard_greens&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.308647&lt;/td&gt;
+      &lt;td&gt;0.944032&lt;/td&gt;
+      &lt;td&gt;2.56924&lt;/td&gt;
+      &lt;td&gt;vegetable&lt;/td&gt;
+      &lt;td&gt;0.84&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;navy_beans&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.385809&lt;/td&gt;
+      &lt;td&gt;0.575997&lt;/td&gt;
+      &lt;td&gt;0.970423&lt;/td&gt;
+      &lt;td&gt;vegetable&lt;/td&gt;
+      &lt;td&gt;0.65&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;okra&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.35274&lt;/td&gt;
+      &lt;td&gt;1.473146&lt;/td&gt;
+      &lt;td&gt;3.21355&lt;/td&gt;
+      &lt;td&gt;vegetable&lt;/td&gt;
+      &lt;td&gt;0.769474&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;olives&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.297624&lt;/td&gt;
+      &lt;td&gt;1.246102&lt;/td&gt;
+      &lt;td&gt;4.18683&lt;/td&gt;
+      &lt;td&gt;vegetable&lt;/td&gt;
+      &lt;td&gt;1&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;onions&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.35274&lt;/td&gt;
+      &lt;td&gt;0.406868&lt;/td&gt;
+      &lt;td&gt;1.03811&lt;/td&gt;
+      &lt;td&gt;vegetable&lt;/td&gt;
+      &lt;td&gt;0.9&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;pinto_beans&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.385809&lt;/td&gt;
+      &lt;td&gt;0.514129&lt;/td&gt;
+      &lt;td&gt;0.86619&lt;/td&gt;
+      &lt;td&gt;vegetable&lt;/td&gt;
+      &lt;td&gt;0.65&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;potatoes&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.264555&lt;/td&gt;
+      &lt;td&gt;0.184017&lt;/td&gt;
+      &lt;td&gt;0.56432&lt;/td&gt;
+      &lt;td&gt;vegetable&lt;/td&gt;
+      &lt;td&gt;0.811301&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;pumpkin&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.540133&lt;/td&gt;
+      &lt;td&gt;0.730411&lt;/td&gt;
+      &lt;td&gt;1.35228&lt;/td&gt;
+      &lt;td&gt;vegetable&lt;/td&gt;
+      &lt;td&gt;1&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;radish&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.275578&lt;/td&gt;
+      &lt;td&gt;0.401618&lt;/td&gt;
+      &lt;td&gt;1.31163&lt;/td&gt;
+      &lt;td&gt;vegetable&lt;/td&gt;
+      &lt;td&gt;0.9&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;red_peppers&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.264555&lt;/td&gt;
+      &lt;td&gt;0.734926&lt;/td&gt;
+      &lt;td&gt;2.27794&lt;/td&gt;
+      &lt;td&gt;vegetable&lt;/td&gt;
+      &lt;td&gt;0.82&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;spinach&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;NaN&lt;/td&gt;
+      &lt;td&gt;NaN&lt;/td&gt;
+      &lt;td&gt;NaN&lt;/td&gt;
+      &lt;td&gt;vegetable&lt;/td&gt;
+      &lt;td&gt;NaN&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;summer_squash&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.396832&lt;/td&gt;
+      &lt;td&gt;0.845480&lt;/td&gt;
+      &lt;td&gt;1.63948&lt;/td&gt;
+      &lt;td&gt;vegetable&lt;/td&gt;
+      &lt;td&gt;0.7695&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;sweet_potatoes&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.440925&lt;/td&gt;
+      &lt;td&gt;0.499400&lt;/td&gt;
+      &lt;td&gt;0.918897&lt;/td&gt;
+      &lt;td&gt;vegetable&lt;/td&gt;
+      &lt;td&gt;0.811301&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;tomatoes&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;NaN&lt;/td&gt;
+      &lt;td&gt;NaN&lt;/td&gt;
+      &lt;td&gt;NaN&lt;/td&gt;
+      &lt;td&gt;vegetable&lt;/td&gt;
+      &lt;td&gt;NaN&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;turnip_greens&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.31967&lt;/td&gt;
+      &lt;td&gt;1.053526&lt;/td&gt;
+      &lt;td&gt;2.47175&lt;/td&gt;
+      &lt;td&gt;vegetable&lt;/td&gt;
+      &lt;td&gt;0.75&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+
+
+
+The tomatoes entry does not have the correct information (it displays NaN for all its rows instead).
+Broccoli, celery, carrots, cauliflower, romaine lettuce, mixed vegetables, mushrooms, and spinach also have NaN values.
+
+This is because these entries have nothing on the row which is labeled &quot;Fresh&quot;. There are different types of those vegetables which are sold at different prices.
+
+__Exercise 1.3.__ Remove rows without a price from the vegetable data frame and then combine the fruit and vegetable data frames. Make sure all columns of numbers are numeric (not strings).
+
+I now combine the vegetable and fruit files into one data frame. I then clean for invalid entries.
+
+
+```python
+vegetable_path = &quot;data/vegetables/&quot;
+fruit_path = &quot;data/fruit/&quot;
+
+num_files = sum(os.path.isfile(os.path.join(vegetable_path, f)) for f in os.listdir(vegetable_path))
+
+vegetableFiles = [f.split('.xlsx', 1)[0] for f in listdir(vegetable_path) if isfile(join(vegetable_path, f))]
+fruitFiles  = [f.split('.xlsx', 1)[0] for f in listdir(fruit_path) if isfile(join(fruit_path, f))]
+
+col = [&quot;type&quot;, &quot;food&quot;, &quot;form&quot;, &quot;price_per_lb&quot;, &quot;yield_v&quot;, &quot;lb_per_cup&quot;, &quot;price_per_cup&quot;]
+
+df = pd.DataFrame()
+
+#extract function, works for both fruits and veggies
+def extract(typeO, path, obj):
+    bkb = pd.read_excel(path + obj+&quot;.xlsx&quot;, header= None, skiprows = [0,1,2])
+    fresh_row = bkb.iloc[0]
+    price_per_lb = fresh_row[1]
+    yield_v = fresh_row[3]
+    lb_per_cup = fresh_row[4]
+    price_per_cup = fresh_row[6]
+    dout = {&quot;type&quot; : [typeO], &quot;food&quot; : [obj], &quot;form&quot;: [&quot;Fresh1&quot;], &quot;price_per_lb&quot; :[price_per_lb] , &quot;yield_v&quot;:[yield_v], &quot;lb_per_cup&quot;:[lb_per_cup], &quot;price_per_cup&quot;:[price_per_cup]}
+
+    return dout
+```
+
+
+```python
+#extract function, works for both fruits and veggies
+def extract(typeO, path, obj):
+    bkb = pd.read_excel(path + obj+&quot;.xlsx&quot;, header= None, skiprows = [0,1,2])
+    fresh_row = bkb.iloc[0]
+    price_per_lb = fresh_row[1]
+    yield_v = fresh_row[3]
+    lb_per_cup = fresh_row[4]
+    price_per_cup = fresh_row[6]
+    dout = {&quot;type&quot; : [typeO], &quot;food&quot; : [obj], &quot;form&quot;: [&quot;Fresh1&quot;], &quot;price_per_lb&quot; :[price_per_lb] , &quot;yield_v&quot;:[yield_v], &quot;lb_per_cup&quot;:[lb_per_cup], &quot;price_per_cup&quot;:[price_per_cup]}
+
+    return dout
+```
+
+
+```python
+#returns combined dataframe of both fruits and veggies
+def getBoth(fruitList, vegetableList):
+    df2 = pd.DataFrame()
+    l = []
+    for f in fruitList:
+        if '$' not in f:
+            d = extract(&quot;fruit&quot;, fruit_path, f)
+            new_df = pd.DataFrame.from_dict(d)
+            l.append(new_df)
+    for f in vegetableList:
+         if '$' not in f:
+            d = extract(&quot;vegetables&quot;, vegetable_path, f)
+            new_df = pd.DataFrame.from_dict(d)
+            l.append(new_df)
+
+    df2 = pd.concat(l, axis = 0)
+    return df2
+
+merged_df = getBoth(fruitFiles, vegetableFiles)
+merged_df[:5]
+```
+
+
+
+
+&lt;div&gt;
+&lt;table border=&quot;1&quot; class=&quot;dataframe&quot;&gt;
+  &lt;thead&gt;
+    &lt;tr style=&quot;text-align: right;&quot;&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;food&lt;/th&gt;
+      &lt;th&gt;form&lt;/th&gt;
+      &lt;th&gt;lb_per_cup&lt;/th&gt;
+      &lt;th&gt;price_per_cup&lt;/th&gt;
+      &lt;th&gt;price_per_lb&lt;/th&gt;
+      &lt;th&gt;type&lt;/th&gt;
+      &lt;th&gt;yield_v&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;apples&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.242508&lt;/td&gt;
+      &lt;td&gt;0.422373&lt;/td&gt;
+      &lt;td&gt;1.56752&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.9&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;apricots&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.363763&lt;/td&gt;
+      &lt;td&gt;1.189102&lt;/td&gt;
+      &lt;td&gt;3.04007&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.93&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;bananas&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.330693&lt;/td&gt;
+      &lt;td&gt;0.292965&lt;/td&gt;
+      &lt;td&gt;0.566983&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.64&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;berries_mixed&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.330693&lt;/td&gt;
+      &lt;td&gt;1.127735&lt;/td&gt;
+      &lt;td&gt;3.41021&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;1&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;blackberries&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.31967&lt;/td&gt;
+      &lt;td&gt;1.922919&lt;/td&gt;
+      &lt;td&gt;5.77471&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.96&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+
+
+
+I now clean the data to remove invalid rows.
+
+
+```python
+def cleanData(df):
+    df2 = df.apply(lambda x: pd.to_numeric(x, errors='ignore'))
+    df2 = df2[pd.notnull(df2['price_per_lb'])]
+    df2 = df2[pd.notnull(df2['price_per_cup'])]
+    return df2
+
+clean_df = cleanData(merged_df)
+clean_df
+```
+
+
+
+
+&lt;div&gt;
+&lt;table border=&quot;1&quot; class=&quot;dataframe&quot;&gt;
+  &lt;thead&gt;
+    &lt;tr style=&quot;text-align: right;&quot;&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;food&lt;/th&gt;
+      &lt;th&gt;form&lt;/th&gt;
+      &lt;th&gt;lb_per_cup&lt;/th&gt;
+      &lt;th&gt;price_per_cup&lt;/th&gt;
+      &lt;th&gt;price_per_lb&lt;/th&gt;
+      &lt;th&gt;type&lt;/th&gt;
+      &lt;th&gt;yield_v&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;apples&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.242508&lt;/td&gt;
+      &lt;td&gt;0.422373&lt;/td&gt;
+      &lt;td&gt;1.56752&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.9&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;apricots&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.363763&lt;/td&gt;
+      &lt;td&gt;1.189102&lt;/td&gt;
+      &lt;td&gt;3.04007&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.93&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;bananas&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.330693&lt;/td&gt;
+      &lt;td&gt;0.292965&lt;/td&gt;
+      &lt;td&gt;0.566983&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.64&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;berries_mixed&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.330693&lt;/td&gt;
+      &lt;td&gt;1.127735&lt;/td&gt;
+      &lt;td&gt;3.41021&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;1&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;blackberries&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.31967&lt;/td&gt;
+      &lt;td&gt;1.922919&lt;/td&gt;
+      &lt;td&gt;5.77471&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.96&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;blueberries&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.31967&lt;/td&gt;
+      &lt;td&gt;1.593177&lt;/td&gt;
+      &lt;td&gt;4.73462&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.95&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;cantaloupe&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.374786&lt;/td&gt;
+      &lt;td&gt;0.393800&lt;/td&gt;
+      &lt;td&gt;0.535874&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.51&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;cherries&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.341717&lt;/td&gt;
+      &lt;td&gt;1.334548&lt;/td&gt;
+      &lt;td&gt;3.59299&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.92&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;cranberries&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.123163&lt;/td&gt;
+      &lt;td&gt;0.589551&lt;/td&gt;
+      &lt;td&gt;4.78674&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;1&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;dates&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.165347&lt;/td&gt;
+      &lt;td&gt;0.792234&lt;/td&gt;
+      &lt;td&gt;4.79135&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;1&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;figs&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.165347&lt;/td&gt;
+      &lt;td&gt;0.990068&lt;/td&gt;
+      &lt;td&gt;5.74832&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.96&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;grapefruit&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.462971&lt;/td&gt;
+      &lt;td&gt;0.848278&lt;/td&gt;
+      &lt;td&gt;0.897802&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.49&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;grapes&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.330693&lt;/td&gt;
+      &lt;td&gt;0.721266&lt;/td&gt;
+      &lt;td&gt;2.09383&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.96&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;honeydew&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.374786&lt;/td&gt;
+      &lt;td&gt;0.649077&lt;/td&gt;
+      &lt;td&gt;0.796656&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.46&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;kiwi&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.385809&lt;/td&gt;
+      &lt;td&gt;1.037970&lt;/td&gt;
+      &lt;td&gt;2.04468&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.76&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;mangoes&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.363763&lt;/td&gt;
+      &lt;td&gt;0.705783&lt;/td&gt;
+      &lt;td&gt;1.37756&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.71&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;nectarines&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.31967&lt;/td&gt;
+      &lt;td&gt;0.618667&lt;/td&gt;
+      &lt;td&gt;1.76115&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.91&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;oranges&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.407855&lt;/td&gt;
+      &lt;td&gt;0.578357&lt;/td&gt;
+      &lt;td&gt;1.03517&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.73&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;papaya&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.308647&lt;/td&gt;
+      &lt;td&gt;0.646174&lt;/td&gt;
+      &lt;td&gt;1.29801&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.62&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;peaches&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.341717&lt;/td&gt;
+      &lt;td&gt;0.566390&lt;/td&gt;
+      &lt;td&gt;1.59119&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.96&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;pears&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.363763&lt;/td&gt;
+      &lt;td&gt;0.590740&lt;/td&gt;
+      &lt;td&gt;1.46157&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.9&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;pineapple&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.363763&lt;/td&gt;
+      &lt;td&gt;0.447686&lt;/td&gt;
+      &lt;td&gt;0.627662&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.51&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;plums&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.363763&lt;/td&gt;
+      &lt;td&gt;0.707176&lt;/td&gt;
+      &lt;td&gt;1.82742&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.94&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;pomegranate&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.341717&lt;/td&gt;
+      &lt;td&gt;1.326342&lt;/td&gt;
+      &lt;td&gt;2.17359&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.56&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;raspberries&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.31967&lt;/td&gt;
+      &lt;td&gt;2.322874&lt;/td&gt;
+      &lt;td&gt;6.97581&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.96&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;strawberries&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.31967&lt;/td&gt;
+      &lt;td&gt;0.802171&lt;/td&gt;
+      &lt;td&gt;2.35881&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.94&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;tangerines&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.407855&lt;/td&gt;
+      &lt;td&gt;0.759471&lt;/td&gt;
+      &lt;td&gt;1.37796&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.74&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;watermelon&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.330693&lt;/td&gt;
+      &lt;td&gt;0.212033&lt;/td&gt;
+      &lt;td&gt;0.333412&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.52&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;acorn_squash&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.451948&lt;/td&gt;
+      &lt;td&gt;1.155360&lt;/td&gt;
+      &lt;td&gt;1.17225&lt;/td&gt;
+      &lt;td&gt;vegetables&lt;/td&gt;
+      &lt;td&gt;0.458554&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;artichoke&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.385809&lt;/td&gt;
+      &lt;td&gt;2.274967&lt;/td&gt;
+      &lt;td&gt;2.21305&lt;/td&gt;
+      &lt;td&gt;vegetables&lt;/td&gt;
+      &lt;td&gt;0.375309&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;...&lt;/th&gt;
+      &lt;td&gt;...&lt;/td&gt;
+      &lt;td&gt;...&lt;/td&gt;
+      &lt;td&gt;...&lt;/td&gt;
+      &lt;td&gt;...&lt;/td&gt;
+      &lt;td&gt;...&lt;/td&gt;
+      &lt;td&gt;...&lt;/td&gt;
+      &lt;td&gt;...&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;blackeye_peas&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.374786&lt;/td&gt;
+      &lt;td&gt;0.524954&lt;/td&gt;
+      &lt;td&gt;0.910441&lt;/td&gt;
+      &lt;td&gt;vegetables&lt;/td&gt;
+      &lt;td&gt;0.65&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;black_beans&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.385809&lt;/td&gt;
+      &lt;td&gt;0.582025&lt;/td&gt;
+      &lt;td&gt;0.98058&lt;/td&gt;
+      &lt;td&gt;vegetables&lt;/td&gt;
+      &lt;td&gt;0.65&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;brussels_sprouts&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.341717&lt;/td&gt;
+      &lt;td&gt;0.890898&lt;/td&gt;
+      &lt;td&gt;2.76355&lt;/td&gt;
+      &lt;td&gt;vegetables&lt;/td&gt;
+      &lt;td&gt;1.06&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;butternut_squash&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.451948&lt;/td&gt;
+      &lt;td&gt;0.787893&lt;/td&gt;
+      &lt;td&gt;1.24474&lt;/td&gt;
+      &lt;td&gt;vegetables&lt;/td&gt;
+      &lt;td&gt;0.714&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;cabbage&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.330693&lt;/td&gt;
+      &lt;td&gt;0.245944&lt;/td&gt;
+      &lt;td&gt;0.579208&lt;/td&gt;
+      &lt;td&gt;vegetables&lt;/td&gt;
+      &lt;td&gt;0.778797&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;collard_greens&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.286601&lt;/td&gt;
+      &lt;td&gt;0.650001&lt;/td&gt;
+      &lt;td&gt;2.63084&lt;/td&gt;
+      &lt;td&gt;vegetables&lt;/td&gt;
+      &lt;td&gt;1.16&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;corn_sweet&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.363763&lt;/td&gt;
+      &lt;td&gt;1.812497&lt;/td&gt;
+      &lt;td&gt;2.69062&lt;/td&gt;
+      &lt;td&gt;vegetables&lt;/td&gt;
+      &lt;td&gt;0.54&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;cucumbers&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.264555&lt;/td&gt;
+      &lt;td&gt;0.353448&lt;/td&gt;
+      &lt;td&gt;1.29593&lt;/td&gt;
+      &lt;td&gt;vegetables&lt;/td&gt;
+      &lt;td&gt;0.97&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;great_northern_beans&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.385809&lt;/td&gt;
+      &lt;td&gt;0.548392&lt;/td&gt;
+      &lt;td&gt;0.923916&lt;/td&gt;
+      &lt;td&gt;vegetables&lt;/td&gt;
+      &lt;td&gt;0.65&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;green_beans&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.275578&lt;/td&gt;
+      &lt;td&gt;0.696606&lt;/td&gt;
+      &lt;td&gt;2.13997&lt;/td&gt;
+      &lt;td&gt;vegetables&lt;/td&gt;
+      &lt;td&gt;0.846575&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;green_peas&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.35274&lt;/td&gt;
+      &lt;td&gt;0.549769&lt;/td&gt;
+      &lt;td&gt;1.01307&lt;/td&gt;
+      &lt;td&gt;vegetables&lt;/td&gt;
+      &lt;td&gt;0.65&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;green_peppers&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.264555&lt;/td&gt;
+      &lt;td&gt;0.455022&lt;/td&gt;
+      &lt;td&gt;1.41036&lt;/td&gt;
+      &lt;td&gt;vegetables&lt;/td&gt;
+      &lt;td&gt;0.82&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;kale&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.286601&lt;/td&gt;
+      &lt;td&gt;0.766262&lt;/td&gt;
+      &lt;td&gt;2.8073&lt;/td&gt;
+      &lt;td&gt;vegetables&lt;/td&gt;
+      &lt;td&gt;1.05&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;kidney_beans&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.385809&lt;/td&gt;
+      &lt;td&gt;0.535194&lt;/td&gt;
+      &lt;td&gt;0.90168&lt;/td&gt;
+      &lt;td&gt;vegetables&lt;/td&gt;
+      &lt;td&gt;0.65&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;lentils&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.385809&lt;/td&gt;
+      &lt;td&gt;0.196738&lt;/td&gt;
+      &lt;td&gt;1.38504&lt;/td&gt;
+      &lt;td&gt;vegetables&lt;/td&gt;
+      &lt;td&gt;2.7161&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;lettuce_iceberg&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.242508&lt;/td&gt;
+      &lt;td&gt;0.309655&lt;/td&gt;
+      &lt;td&gt;1.21304&lt;/td&gt;
+      &lt;td&gt;vegetables&lt;/td&gt;
+      &lt;td&gt;0.95&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;lima_beans&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.374786&lt;/td&gt;
+      &lt;td&gt;0.797757&lt;/td&gt;
+      &lt;td&gt;1.38357&lt;/td&gt;
+      &lt;td&gt;vegetables&lt;/td&gt;
+      &lt;td&gt;0.65&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;mustard_greens&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.308647&lt;/td&gt;
+      &lt;td&gt;0.944032&lt;/td&gt;
+      &lt;td&gt;2.56924&lt;/td&gt;
+      &lt;td&gt;vegetables&lt;/td&gt;
+      &lt;td&gt;0.84&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;navy_beans&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.385809&lt;/td&gt;
+      &lt;td&gt;0.575997&lt;/td&gt;
+      &lt;td&gt;0.970423&lt;/td&gt;
+      &lt;td&gt;vegetables&lt;/td&gt;
+      &lt;td&gt;0.65&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;okra&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.35274&lt;/td&gt;
+      &lt;td&gt;1.473146&lt;/td&gt;
+      &lt;td&gt;3.21355&lt;/td&gt;
+      &lt;td&gt;vegetables&lt;/td&gt;
+      &lt;td&gt;0.769474&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;olives&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.297624&lt;/td&gt;
+      &lt;td&gt;1.246102&lt;/td&gt;
+      &lt;td&gt;4.18683&lt;/td&gt;
+      &lt;td&gt;vegetables&lt;/td&gt;
+      &lt;td&gt;1&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;onions&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.35274&lt;/td&gt;
+      &lt;td&gt;0.406868&lt;/td&gt;
+      &lt;td&gt;1.03811&lt;/td&gt;
+      &lt;td&gt;vegetables&lt;/td&gt;
+      &lt;td&gt;0.9&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;pinto_beans&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.385809&lt;/td&gt;
+      &lt;td&gt;0.514129&lt;/td&gt;
+      &lt;td&gt;0.86619&lt;/td&gt;
+      &lt;td&gt;vegetables&lt;/td&gt;
+      &lt;td&gt;0.65&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;potatoes&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.264555&lt;/td&gt;
+      &lt;td&gt;0.184017&lt;/td&gt;
+      &lt;td&gt;0.56432&lt;/td&gt;
+      &lt;td&gt;vegetables&lt;/td&gt;
+      &lt;td&gt;0.811301&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;pumpkin&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.540133&lt;/td&gt;
+      &lt;td&gt;0.730411&lt;/td&gt;
+      &lt;td&gt;1.35228&lt;/td&gt;
+      &lt;td&gt;vegetables&lt;/td&gt;
+      &lt;td&gt;1&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;radish&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.275578&lt;/td&gt;
+      &lt;td&gt;0.401618&lt;/td&gt;
+      &lt;td&gt;1.31163&lt;/td&gt;
+      &lt;td&gt;vegetables&lt;/td&gt;
+      &lt;td&gt;0.9&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;red_peppers&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.264555&lt;/td&gt;
+      &lt;td&gt;0.734926&lt;/td&gt;
+      &lt;td&gt;2.27794&lt;/td&gt;
+      &lt;td&gt;vegetables&lt;/td&gt;
+      &lt;td&gt;0.82&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;summer_squash&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.396832&lt;/td&gt;
+      &lt;td&gt;0.845480&lt;/td&gt;
+      &lt;td&gt;1.63948&lt;/td&gt;
+      &lt;td&gt;vegetables&lt;/td&gt;
+      &lt;td&gt;0.7695&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;sweet_potatoes&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.440925&lt;/td&gt;
+      &lt;td&gt;0.499400&lt;/td&gt;
+      &lt;td&gt;0.918897&lt;/td&gt;
+      &lt;td&gt;vegetables&lt;/td&gt;
+      &lt;td&gt;0.811301&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;turnip_greens&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.31967&lt;/td&gt;
+      &lt;td&gt;1.053526&lt;/td&gt;
+      &lt;td&gt;2.47175&lt;/td&gt;
+      &lt;td&gt;vegetables&lt;/td&gt;
+      &lt;td&gt;0.75&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;p&gt;63 rows × 7 columns&lt;/p&gt;
+&lt;/div&gt;
+
+
+
+__Exercise 1.4.__ Discuss the questions below (a paragraph each is sufficient). Use plots to support your ideas.
+
+* What kinds of fruits are the most expensive (per pound)? What kinds are the least expensive?
+* How do the price distributions compare for fruit and vegetables?
+* Which foods are the best value for the price?
+* What's something surprising about this data set?
+* Which foods do you expect to provide the best combination of price, yield, and nutrition? A future assignment may combine this data set with another so you can check your hypothesis.
+
+1. Most expensive fruits are the berries (raspberries, blackberries, cranberries, blueberries) and figs/dates. The least expensive are bananas, watermelon, cantalope, and pineapple.
+
+
+```python
+fruit_df.sort_values(['price_per_lb'], ascending = 0)[:9]
+```
+
+
+
+
+&lt;div&gt;
+&lt;table border=&quot;1&quot; class=&quot;dataframe&quot;&gt;
+  &lt;thead&gt;
+    &lt;tr style=&quot;text-align: right;&quot;&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;food&lt;/th&gt;
+      &lt;th&gt;form&lt;/th&gt;
+      &lt;th&gt;lb_per_cup&lt;/th&gt;
+      &lt;th&gt;price_per_cup&lt;/th&gt;
+      &lt;th&gt;price_per_lb&lt;/th&gt;
+      &lt;th&gt;type&lt;/th&gt;
+      &lt;th&gt;yield_v&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;raspberries&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.319670&lt;/td&gt;
+      &lt;td&gt;2.322874&lt;/td&gt;
+      &lt;td&gt;6.975811&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.96&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;blackberries&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.319670&lt;/td&gt;
+      &lt;td&gt;1.922919&lt;/td&gt;
+      &lt;td&gt;5.774708&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.96&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;figs&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.165347&lt;/td&gt;
+      &lt;td&gt;0.990068&lt;/td&gt;
+      &lt;td&gt;5.748318&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.96&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;dates&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.165347&lt;/td&gt;
+      &lt;td&gt;0.792234&lt;/td&gt;
+      &lt;td&gt;4.791351&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;1.00&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;cranberries&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.123163&lt;/td&gt;
+      &lt;td&gt;0.589551&lt;/td&gt;
+      &lt;td&gt;4.786741&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;1.00&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;blueberries&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.319670&lt;/td&gt;
+      &lt;td&gt;1.593177&lt;/td&gt;
+      &lt;td&gt;4.734622&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.95&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;cherries&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.341717&lt;/td&gt;
+      &lt;td&gt;1.334548&lt;/td&gt;
+      &lt;td&gt;3.592990&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.92&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;berries_mixed&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.330693&lt;/td&gt;
+      &lt;td&gt;1.127735&lt;/td&gt;
+      &lt;td&gt;3.410215&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;1.00&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;apricots&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.363763&lt;/td&gt;
+      &lt;td&gt;1.189102&lt;/td&gt;
+      &lt;td&gt;3.040072&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.93&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+
+
+
+
+```python
+fruit_df.sort_values(['price_per_lb'], ascending = 1)[:9]
+```
+
+
+
+
+&lt;div&gt;
+&lt;table border=&quot;1&quot; class=&quot;dataframe&quot;&gt;
+  &lt;thead&gt;
+    &lt;tr style=&quot;text-align: right;&quot;&gt;
+      &lt;th&gt;&lt;/th&gt;
+      &lt;th&gt;food&lt;/th&gt;
+      &lt;th&gt;form&lt;/th&gt;
+      &lt;th&gt;lb_per_cup&lt;/th&gt;
+      &lt;th&gt;price_per_cup&lt;/th&gt;
+      &lt;th&gt;price_per_lb&lt;/th&gt;
+      &lt;th&gt;type&lt;/th&gt;
+      &lt;th&gt;yield_v&lt;/th&gt;
+    &lt;/tr&gt;
+  &lt;/thead&gt;
+  &lt;tbody&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;watermelon&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.330693&lt;/td&gt;
+      &lt;td&gt;0.212033&lt;/td&gt;
+      &lt;td&gt;0.333412&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.52&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;cantaloupe&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.374786&lt;/td&gt;
+      &lt;td&gt;0.393800&lt;/td&gt;
+      &lt;td&gt;0.535874&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.51&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;bananas&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.330693&lt;/td&gt;
+      &lt;td&gt;0.292965&lt;/td&gt;
+      &lt;td&gt;0.566983&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.64&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;pineapple&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.363763&lt;/td&gt;
+      &lt;td&gt;0.447686&lt;/td&gt;
+      &lt;td&gt;0.627662&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.51&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;honeydew&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.374786&lt;/td&gt;
+      &lt;td&gt;0.649077&lt;/td&gt;
+      &lt;td&gt;0.796656&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.46&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;grapefruit&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.462971&lt;/td&gt;
+      &lt;td&gt;0.848278&lt;/td&gt;
+      &lt;td&gt;0.897802&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.49&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;oranges&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.407855&lt;/td&gt;
+      &lt;td&gt;0.578357&lt;/td&gt;
+      &lt;td&gt;1.035173&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.73&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;papaya&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.308647&lt;/td&gt;
+      &lt;td&gt;0.646174&lt;/td&gt;
+      &lt;td&gt;1.298012&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.62&lt;/td&gt;
+    &lt;/tr&gt;
+    &lt;tr&gt;
+      &lt;th&gt;0&lt;/th&gt;
+      &lt;td&gt;mangoes&lt;/td&gt;
+      &lt;td&gt;Fresh1&lt;/td&gt;
+      &lt;td&gt;0.363763&lt;/td&gt;
+      &lt;td&gt;0.705783&lt;/td&gt;
+      &lt;td&gt;1.377563&lt;/td&gt;
+      &lt;td&gt;fruit&lt;/td&gt;
+      &lt;td&gt;0.71&lt;/td&gt;
+    &lt;/tr&gt;
+  &lt;/tbody&gt;
+&lt;/table&gt;
+&lt;/div&gt;
+
+
+
+
+```python
+clean_df.boxplot(&quot;type&quot;, &quot;price_per_lb&quot;)
+plt.show()
+```</content><author><name>Cindy Lai</name></author><summary type="html">Assignment 3</summary></entry><entry><title type="html">Assignment 2</title><link href="http://localhost:4000/2017/01/29/a2/" rel="alternate" type="text/html" title="Assignment 2" /><published>2017-01-29T04:00:00-08:00</published><updated>2017-01-29T04:00:00-08:00</updated><id>http://localhost:4000/2017/01/29/a2</id><content type="html" xml:base="http://localhost:4000/2017/01/29/a2/"># Image manipulation with Python and PIL package 
+
+
+Cynthia Lai
+912216296 
+
+I asked Colin for questions.
+https://docs.scipy.org/doc/numpy/reference/generated/numpy.fliplr.html
+https://docs.scipy.org/doc/numpy/reference/generated/numpy.matrix.transpose.html
+https://docs.scipy.org/doc/numpy/reference/generated/numpy.dot.html
+
+# Assignment 2
+
+## Part 1: Image Processing Basics
+
+Computers use tiny dots called _pixels_ to display images. Each pixel is stored as an array of numbers that represent color intensities.
+
+__Example.__ In an 8-bit grayscale image, each pixel is a single number. The number represents light intensity ranging from black (0) to white (255).
+
+__Example.__ In a 24-bit RGB color image, each pixel is an array of 3 numbers. These numbers range from 0 to 255 and represent red, green, and blue intensity, respectively. For instance, `(0, 0, 255)` is &lt;span style=&quot;color:#00F&quot;&gt;bright blue&lt;/span&gt; and `(255, 128, 0)` is &lt;span style=&quot;color:#FF8000&quot;&gt;orange&lt;/span&gt;.
+
+In this assignment, you'll use Python and NumPy to manipulate 24-bit RGB color images.
+
+You can use `Image.open()` from the Python imaging library (PIL) to open an image:
+
+
+```python
+from PIL import Image
+
+# Cat image from https://unsplash.com/photos/FqkBXo2Nkq0
+cat_img = Image.open(&quot;cat.png&quot;)
+```
+
+Images display inline in Jupyter notebooks:
+
+
+```python
+cat_img
+```
+
+
+
+
+![png](images/output_4_0.png)
+
+
+
+In a Python terminal, you can display the image in a new window with `.show()` instead.
+
+NumPy can convert images to arrays:
+
+
+```python
+import numpy as np
+
+cat = np.array(cat_img)
+```
+
+To convert an array back to an image (for display) use the function below:
+
+
+```python
+def as_image(x):
+    &quot;&quot;&quot;Convert an ndarray to an Image.
+    
+    Args:
+        x (ndarray): The array of pixels.
+        
+    Returns:
+        Image: The Image object.
+    &quot;&quot;&quot;
+    return Image.fromarray(np.uint8(x))
+```
+
+__Exercise 1.1.__ How many dimensions does the `cat` array have? What does each dimension represent?
+
+
+```python
+cat.shape
+```
+
+
+
+
+    (267L, 400L, 3L)
+
+
+
+There are 3 dimensions.
+The image is 267 x 400, and has 3 color channels.
+
+__Exercise 1.2.__ Use `.copy()` to copy the cat array to a new variable. Swap the green and blue color channels in the copy. Display the result.
+
+
+```python
+newCat = cat.copy()
+
+newCat[:, :, 1] = cat[:, :, 2]
+newCat[:, :, 2] = cat[:, :, 1]
+Image.fromarray(np.uint8(newCat[:, :, :]))
+```
+
+
+
+
+![png](output_13_0.png)
+
+
+
+__Exercise 1.3.__ Why is `.copy()` necessary in exercise 1.2? What happens if you don't use `.copy()`?
+
+If you don't use copy(), when you change newCat, it will change cat as well.
+
+__Exercise 1.4.__ Flip the blue color channel from left to right. Display the resulting image. _Hint: see the NumPy documentation on array manipulation routines._
+
+
+```python
+cat3 = np.fliplr(cat[:, :, 2])
+Image.fromarray(np.uint8(cat3))
+```
+
+
+
+
+![png](output_17_0.png)
+
+
+
+## Part 2: Singular Value Decomposition
+
+Suppose $X$ is an $n \times p$ matrix (for instance, one color channel of the cat image). The _singular value decomposition_ (SVD) factors $X$ as $X = UD V^T$, where:
+
+* $U$ is an $n \times n$ orthogonal matrix
+* $D$ is an $n \times p$ matrix with zeroes everywhere except the diagonal
+* $V$ is an $p \times p$ orthogonal matrix
+
+Note that a matrix $A$ is _orthogonal_ when $A^T A = I$ and $AA^T = I$.
+
+__Example.__ We can use NumPy to compute the SVD for a matrix:
+
+
+```python
+x = np.array(
+    [[0, 2, 3],
+     [3, 2, 1]]
+)
+u, d, vt = np.linalg.svd(x)
+# Here d is 2x2 because NumPy only returns the diagonal of D.
+print &quot;u is:\n&quot;, u, &quot;\nd is:\n&quot;, d, &quot;\nv^T is:\n&quot;, vt
+```
+
+    u is:
+    [[-0.68145174 -0.73186305]
+     [-0.73186305  0.68145174]] 
+    d is:
+    [ 4.52966162  2.54600974] 
+    v^T is:
+    [[-0.48471372 -0.62402665 -0.6128975 ]
+     [ 0.80296442 -0.03960025 -0.59470998]
+     [ 0.34684399 -0.78039897  0.52026598]]
+    
+
+If we let
+
+* $u_i$ denote the $i$th column of $U$
+* $d_i$ denote the $i$th diagonal element of $D$
+* $v_i$ denote the $i$th column of $V$
+
+then we can write the SVD as $\ X = UDV^T = d_1 u_1 v_1^T + \ldots + d_m u_m v_m^T\ $ using the rules of matrix multiplication. In other words, the SVD decomposes $X$ into a sum!
+
+If we eliminate some of the terms in the sum, we get a simple approximation for $X$. For instance, we could eliminate all but first 3 terms to get the approximation $X \approx d_1 u_1 v_1^T + d_2 u_2 v_2^T + d_3 u_3 v_3^T$. This is the same as if we:
+
+* Zero all but the first 3 diagonal elements of $D$ to get $D_3$, then compute $X \approx UD_3V^T$
+* Eliminate all but the first 3 columns of $V$ to get $p \times 3$ matrix $V_3$, then compute $X \approx UDV_3^T$
+
+We always eliminate terms starting from the end rather than the beginning, because these terms contribute the least to $X$.
+
+Why would we want to approximate a matrix $X$?
+
+In statistics, _principal components analysis_ uses this approximation to reduce the dimension (number of covariates) in a  centered (mean 0) data set. The vectors $d_i u_i$ are called the _principal components_ of $X$. The vectors $v_i^T$ are called the _basis vectors_. Note that both depend on $X$. The dimension is reduced by using the first $q$ principal components instead of the original $p$ covariates. In other words, the $n \times p$ data $X$ is replaced by the $n \times q$ data $UD_q = XV_q$
+
+In computing, this approximation is sometimes used to reduce the number of bits needed to store a matrix (or image). If $q$ terms are kept, then only $nq + pq$ values (for $XV_q$ and $V_q^T$) need to be stored instead of the uncompressed $np$ values.
+
+__Exercise 2.1.__ Write the functions described below.
+
+* A function that takes a matrix $X$ and returns its principal component matrix $XV_q$ and basis matrix $V_q^T$. This function should also take the number of terms kept $q$ as an argument.
+
+* A function that takes a principal component matrix $XV_q$ and basis matrix $V_q^T$ and returns an approximation $\hat{X}$ for the original matrix.
+
+As usual, make sure to document your functions. Test your function on the red color channel of the cat image. What's the smallest number of terms where the cat is still recognizable as a cat?
+
+The function &lt;b&gt;pcAndBasis&lt;/b&gt; takes a matrix x and threshold value q and returns the principal component matrix and a basis matrix.
+
+
+```python
+def pcAndBasis(x, q):
+    # returns a matrix XV (pcMatrix) and basis Vt (basis)
+    # x is the input matrix, q is the number of terms kept
+    u, d, vt = np.linalg.svd(x)
+    basis = (vt.transpose()[:, :q]).transpose() # q x p matrix
+    pcMatrix = np.dot(x, vt.transpose()[:, :q]) # n x p * p x q = n x q
+    return pcMatrix, basis
+
+pc, basis = pcAndBasis(x, 1)
+pcAndBasis(x, 1)
+```
+
+
+
+
+    (array([[-3.0867458 ],
+            [-3.31509197]]), array([[-0.48471372, -0.62402665, -0.6128975 ]]))
+
+
+
+The &lt;b&gt;approximate&lt;/b&gt; function takes a PC matrix and a basis matrix and returns the X matrix approximated, set by a q threshold level.
+
+
+```python
+def approximate(pcMatrix, basis):
+    return np.dot(pcMatrix, basis)
+#approximate(pc, basis)
+```
+
+Now, we use a copy of the cat image to modify the red channel level.
+
+
+```python
+blurryCat = cat.copy()
+
+q = 15
+pcRed, basisRed = pcAndBasis(cat[:, :, 0], q)
+blurryRed = approximate(pcRed, basisRed)
+blurryCat[:, :, 0] = blurryRed
+#print pcRed.shape, basisRed.shape, blurryRed.shape
+as_image(blurryCat[:,:,0])
+```
+
+
+
+
+![png](output_26_0.png)
+
+
+
+At q = 15, the image still looks vaguely like a cat. It is a bit hard to comprehend, but there are a few traits that still stand out as that of a cat.
+
+__Exercise 2.2.__ You can check the number of bytes used by a NumPy array with the `.nbytes` attribute. How many bytes does the red color channel of the cat image use? How many bytes does the compressed version use when 10 terms are kept? What percentage of the original size is this?
+
+
+```python
+pc10, basis10 = pcAndBasis(cat[:,:,0], 10)
+cat10 = cat.copy()
+cat10[:, :, 0] = approximate(pc10, basis10)
+
+originalPC, originalBasis = pcAndBasis(cat[:,:,0], 400)
+
+print &quot;original image bytes: %d&quot; %(cat[:,:,0].nbytes)
+print &quot;blurry rate bytes: %d&quot; %(pc10.nbytes + basis10.nbytes)
+
+print &quot;Percentage of compression: %d%%&quot; %((pc10.nbytes + basis10.nbytes)*100/cat[:,:,0].nbytes)
+```
+
+    original image bytes: 106800
+    blurry rate bytes: 53360
+    Percentage of compression: 49%</content><author><name>Cindy Lai</name></author><summary type="html">Image manipulation with Python and PIL package</summary></entry><entry><title type="html">Assignment 1</title><link href="http://localhost:4000/2017/01/22/a1/" rel="alternate" type="text/html" title="Assignment 1" /><published>2017-01-22T04:00:00-08:00</published><updated>2017-01-22T04:00:00-08:00</updated><id>http://localhost:4000/2017/01/22/a1</id><content type="html" xml:base="http://localhost:4000/2017/01/22/a1/"># Assignment 1
+
+
+## Part 1: The Doomsday Algorithm
+
+The Doomsday algorithm, devised by mathematician J. H. Conway, computes the day of the week any given date fell on. The algorithm is designed to be simple enough to memorize and use for mental calculation.
+
+__Example.__ With the algorithm, we can compute that July 4, 1776 (the day the United States declared independence from Great Britain) was a Thursday.
+
+The algorithm is based on the fact that for any year, several dates always fall on the same day of the week, called the &lt;em style=&quot;color:#F00&quot;&gt;doomsday&lt;/em&gt; for the year. These dates include 4/4, 6/6, 8/8, 10/10, and 12/12.
+
+__Example.__ The doomsday for 2016 is Monday, so in 2016 the dates above all fell on Mondays. The doomsday for 2017 is Tuesday, so in 2017 the dates above will all fall on Tuesdays.
+
+The doomsday algorithm has three major steps:
+
+1. Compute the anchor day for the target century.
+2. Compute the doomsday for the target year based on the anchor day.
+3. Determine the day of week for the target date by counting the number of days to the nearest doomsday.
+
+Each step is explained in detail below.
+
+### The Anchor Day
+
+The doomsday for the first year in a century is called the &lt;em style=&quot;color:#F00&quot;&gt;anchor day&lt;/em&gt; for that century. The anchor day is needed to compute the doomsday for any other year in that century. The anchor day for a century $c$ can be computed with the formula:
+$$
+a = \bigl( 5 (c \bmod 4) + 2 \bigr) \bmod 7
+$$
+The result $a$ corresponds to a day of the week, starting with $0$ for Sunday and ending with $6$ for Saturday.
+
+__Note.__ The modulo operation $(x \bmod y)$ finds the remainder after dividing $x$ by $y$. For instance, $12 \bmod 3 = 0$ since the remainder after dividing $12$ by $3$ is $0$. Similarly, $11 \bmod 7 = 4$, since the remainder after dividing $11$ by $7$ is $4$.
+
+__Example.__ Suppose the target year is 1954, so the century is $c = 19$. Plugging this into the formula gives
+$$a = \bigl( 5 (19 \bmod 4) + 2 \bigr) \bmod 7 = \bigl( 5(3) + 2 \bigr) \bmod 7 = 3.$$
+In other words, the anchor day for 1900-1999 is Wednesday, which is also the doomsday for 1900.
+
+__Exercise 1.1.__ Write a function that accepts a year as input and computes the anchor day for that year's century. The modulo operator `%` and functions in the `math` module may be useful. Document your function with a docstring and test your function for a few different years.  Do this in a new cell below this one.
+
+
+```python
+def anchorDay(year):
+    remainder = year % 100
+    century = (year-remainder)/100
+    anchor = (5 * (century % 4) + 2) % 7
+    return(anchor)
+
+for year in [1, 2000, 1520]:
+    print(anchorDay(year))
+```
+
+    2
+    2
+    3
+    
+
+### The Doomsday
+
+Once the anchor day is known, let $y$ be the last two digits of the target year. Then the doomsday for the target year can be computed with the formula:
+$$d = \left(y + \left\lfloor\frac{y}{4}\right\rfloor + a\right) \bmod 7$$
+The result $d$ corresponds to a day of the week.
+
+__Note.__ The floor operation $\lfloor x \rfloor$ rounds $x$ down to the nearest integer. For instance, $\lfloor 3.1 \rfloor = 3$ and $\lfloor 3.8 \rfloor = 3$.
+
+__Example.__ Again suppose the target year is 1954. Then the anchor day is $a = 3$, and $y = 54$, so the formula gives
+$$
+d = \left(54 + \left\lfloor\frac{54}{4}\right\rfloor + 3\right) \bmod 7 = (54 + 13 + 3) \bmod 7 = 0.
+$$
+Thus the doomsday for 1954 is Sunday.
+
+__Exercise 1.2.__ Write a function that accepts a year as input and computes the doomsday for that year. Your function may need to call the function you wrote in exercise 1.1. Make sure to document and test your function.
+
+
+```python
+def Doomsday(year):
+    remainder = year % 100
+    doom = (remainder + int(remainder/4) + anchorDay(year)) % 7
+    return(doom)
+
+for year in [1, 2000, 1520]:
+    print(Doomsday(year))
+```
+
+    3
+    2
+    0
+    
+
+### The Day of Week
+
+The final step in the Doomsday algorithm is to count the number of days between the target date and a nearby doomsday, modulo 7. This gives the day of the week.
+
+Every month has at least one doomsday:
+* (regular years) 1/10, 2/28
+* (leap years) 1/11, 2/29
+* 3/21, 4/4, 5/9, 6/6, 7/11, 8/8, 9/5, 10/10, 11/7, 12/12
+
+__Example.__ Suppose we want to find the day of the week for 7/21/1954. The doomsday for 1954 is Sunday, and a nearby doomsday is 7/11. There are 10 days in July between 7/11 and 7/21. Since $10 \bmod 7 = 3$, the date 7/21/1954 falls 3 days after a Sunday, on a Wednesday.
+
+__Exercise 1.3.__ Write a function to determine the day of the week for a given day, month, and year. Be careful of leap years! Your function should return a string such as &quot;Thursday&quot; rather than a number. As usual, document and test your code.
+
+
+```python
+def leapYear(year):
+    leap = False
+    if year % 4 == 0:
+        leap = True
+    return(leap)
+
+for year in [1, 2000, 1520]:
+    print(leapYear(year))
+```
+
+    False
+    True
+    True
+    
+
+
+```python
+daysWeek = [&quot;Sunday&quot;, &quot;Monday&quot;, &quot;Tuesday&quot;, &quot;Wednesday&quot;, &quot;Thursday&quot;, &quot;Friday&quot;, &quot;Saturday&quot;]
+ddays = [10, 28, 21, 4, 9, 6, 11, 8, 5, 10, 7, 12]
+
+
+def dayOfWeek(month, day, year):
+    doomsYear = Doomsday(year)
+    if leapYear(year):
+        ddays[1] = 29
+        ddays[0] = 11
+    dayDistance = abs(ddays[month - 1] - day)
+    weekDistance = dayDistance % 7
+    index = (doomsYear + weekDistance) % 7
+    return(daysWeek[index])
+
+print(dayOfWeek(1,22,2017))
+print(dayOfWeek(1,23,2017))
+```
+
+    Sunday
+    Monday
+    
+
+__Exercise 1.4.__ How many times did Friday the 13th occur in the years 1900-1999? Does this number seem to be similar to other centuries?
+
+
+```python
+def friday13(startYear, endYear):
+    years = range(startYear, endYear + 1)
+    months = range(1,13)
+    count = 0
+    for year in years:
+        for month in months:
+            dow = dayOfWeek(months[month - 1], 13, year)
+            if dow == &quot;Friday&quot;:
+                count += 1
+    return(count)
+
+print(friday13(1900,1999)) #172
+print(friday13(1800,1899)) #170
+print(friday13(1700,1799)) #173
+# all pretty close
+```
+
+    172
+    170
+    173
+    
+
+__Exercise 1.5.__ How many times did Friday the 13th occur between the year 2000 and today?
+
+
+```python
+friday13(2000,2016)
+```
+
+
+
+
+    30
+
+
+
+## Part 2: 1978 Birthdays
+
+__Exercise 2.1.__ The file `birthdays.txt` contains the number of births in the United States for each day in 1978. Inspect the file to determine the format. Note that columns are separated by the tab character, which can be entered in Python as `\t`. Write a function that uses iterators and list comprehensions with the string methods `split()` and `strip()` to  convert each line of data to the list format
+
+```Python
+[month, day, year, count]
+```
+The elements of this list should be integers, not strings. The function `read_birthdays` provided below will help you load the file.
+
+
+```python
+def readBirthdays(file_path):
+    &quot;&quot;&quot;Read the contents of the birthdays file into a string.
+    
+    Arguments:
+        file_path (string): The path to the birthdays file.
+        
+    Returns:
+        string: The contents of the birthdays file.
+    &quot;&quot;&quot;
+    with open(file_path) as file:
+        return file.read()
+```
+
+
+```python
+data = readBirthdays('birthdays.txt')
+data = data.strip()
+data = [data.split(&quot;\n&quot;)][0]
+data = data[6:]
+
+data = [entry.replace(&quot;\t&quot;,&quot;/&quot;) for entry in data]
+data = [entry.split(&quot;/&quot;) for entry in data]
+
+#print(data[1:10])
+
+bdays = []
+for entry in data:
+    #print(entry)
+    li = []
+    for element in li:
+        print(element)
+        li.append(int(element))
+    bdays.append(li)
+```</content><author><name>Cindy Lai</name></author><summary type="html">Assignment 1</summary></entry></feed>

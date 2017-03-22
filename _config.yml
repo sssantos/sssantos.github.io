@@ -1,1 +1,22 @@
-theme: jekyll-theme-tactile
+# Site settings
+title: Colin's Portfolio
+header-img: img/home-bg.jpg
+email: sssantos@ucdavis.edu
+description: Data Science Project Portfolio 
+baseurl: ""
+url: "https://sssantos.github.io"
+github_username:  sssantos
+email_username: sssantos@ucdavis.edu
+
+# Google Analytics
+# To enable google analytics, uncomment below line with a valid Google Tracking ID
+# google_tracking_id:
+
+# Build settings
+markdown: kramdown
+highlighter: rouge
+permalink: pretty
+paginate: 5
+exclude: ["less","node_modules","Gruntfile.js","package.json","README.md"]
+
+gems: [jekyll-paginate, jekyll-feed]
