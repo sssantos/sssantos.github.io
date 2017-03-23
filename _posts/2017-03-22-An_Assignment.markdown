@@ -39,7 +39,7 @@ The stringr library will be utilized for text processing and the directory will 
 </p>
 
 
-```r
+```R
 library(stringr)
 setwd("/Users/sssantos/Documents/STA141A/HW4/CarAdvert")
 ```
