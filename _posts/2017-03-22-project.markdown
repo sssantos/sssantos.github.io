@@ -4,7 +4,7 @@ title:      "STA141B Final Project"
 subtitle:   "Trends of Top Songs"
 date:       2017-03-22 12:00:00
 author:     "Colin Santos"
-header-img: "img/finalproj.jpg"
+header-img: "img/finalproj.png"
 ---
 
 ## Analyzing the trends from the top 100 songs of all time...
