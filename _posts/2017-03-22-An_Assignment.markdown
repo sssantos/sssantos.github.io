@@ -2,7 +2,7 @@
 layout:     post
 title:      "Text Scraping Car Advertisements"
 subtitle:   "A STA141A Assignment done in R"
-date:       2014-06-10 12:00:00
+date:       2017-03-22 12:00:0
 author:     "Colin Santos"
 header-img: "img/post-bg-01.jpg"
 ---
