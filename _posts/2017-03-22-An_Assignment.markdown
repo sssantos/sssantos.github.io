@@ -7,6 +7,8 @@ author:     "Colin Santos"
 header-img: "img/post-bg-01.jpg"
 ---
 
+<a href="sssantos.github.io/_posts/141A+HW4+Markdown.html">Insert Your Link Here</a>
+
 <h1>Text Scraping Car Advertisments</h1>
 <p> 
 This markdown features my code from part 1 of homework 4 from STA141A Fall 2016, taught by Professor Debashis Paul. I will be extracting and sorting data from <a href="https://github.com/sssantos/Course-Datasets">a directory of car advertisement text files</a> into a data frame.
