@@ -1,3 +1,11 @@
+---
+layout:     post
+title:      "Text Scraping Car Advetisements"
+subtitle:   "A STA141A Assignment done in R"
+date:       2014-06-10 12:00:00
+author:     "Colin Santos"
+header-img: "img/post-bg-01.jpg"
+---
 
 <hr align = right>Colin Santos</right>
 <h1>Text Scraping Car Advertisments</h1>
