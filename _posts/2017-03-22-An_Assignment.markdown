@@ -7,7 +7,7 @@ author:     "Colin Santos"
 header-img: "img/post-bg-01.jpg"
 ---
 
-<a href="http://sssantos.github.io/_posts/141A+HW4+Markdown.html">HTML file</a>
+<a href="http://sssantos.github.io/141A+HW4+Markdown.html">HTML file</a>
 
 <h1>Text Scraping Car Advertisments</h1>
 <p> 
