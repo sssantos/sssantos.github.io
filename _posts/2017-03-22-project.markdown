@@ -1,0 +1,13 @@
+---
+layout:     post
+title:      "STA141B Final Project"
+subtitle:   "Trends of Top Songs"
+date:       2017-03-22 12:00:00
+author:     "Colin Santos"
+header-img: "img/finalproj.jpg"
+---
+
+## Analyzing the trends from the top 100 songs of all time...
+
+
+The project website is found here: [on this site](https://jiahtan.github.io/STA141B/).
