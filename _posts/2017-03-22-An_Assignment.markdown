@@ -7,10 +7,9 @@ author:     "Colin Santos"
 header-img: "img/post-bg-01.jpg"
 ---
 
-<hr align = right>Colin Santos</right>
 <h1>Text Scraping Car Advertisments</h1>
 <p> 
-This markdown features my code from part 1 of homework 4 from STA141A Fall 2016. I will be extracting and sorting data from <a href="https://github.com/sssantos/Course-Datasets">a directory of car advertisement text files</a> into a data frame.
+This markdown features my code from part 1 of homework 4 from STA141A Fall 2016, taught by Professor Debashis Paul. I will be extracting and sorting data from <a href="https://github.com/sssantos/Course-Datasets">a directory of car advertisement text files</a> into a data frame.
 </p>
 <p>
 <strong>End Result:</strong> Obtain a data frame with values from the text advertisements sorted into the followering columns
@@ -40,7 +39,7 @@ The stringr library will be utilized for text processing and the directory will 
 </p>
 
 
-```R
+```r
 library(stringr)
 setwd("/Users/sssantos/Documents/STA141A/HW4/CarAdvert")
 ```
