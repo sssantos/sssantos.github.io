@@ -7,7 +7,10 @@ author:     "Colin Santos"
 header-img: "img/finalproj.png"
 ---
 
-## Analyzing the trends from the top 100 songs of all time...
+## Analyzing the lyrical trends from the top 100 songs of all time...
 
+For this project, I worked with Cindy Lai and Kavi Tan to analyze
+the the trends and patterns in the lyrics in a collection of over
+5100 songs that found their way into the top charts on Billboard's website
 
 The project website is found here: [on this site](https://jiahtan.github.io/STA141B/).
